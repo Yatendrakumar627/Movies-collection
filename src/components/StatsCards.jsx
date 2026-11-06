@@ -58,7 +58,7 @@ export default function StatsCards({ stats = {} }) {
             <div className="stat-value-row">
               <span className="stat-main-number">{planToWatch.toLocaleString()}</span>
               <span className="stat-trend-badge trend-neutral" title="Queued in watchlist">
-                <span>92 queued</span>
+                <span>Queued</span>
               </span>
             </div>
           </div>

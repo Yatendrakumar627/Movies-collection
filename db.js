@@ -9,73 +9,9 @@
 
 const _db = require('./api/_db');
 
-// Sample in-memory items for instant local demo before Neon credentials are provided
-const fallbackDemoTitles = [
-  {
-    title: 'Interstellar',
-    category: 'Movie',
-    status: 'completed',
-    genre: 'Sci-Fi, Adventure, Drama',
-    release_year: 2014,
-    rating: 9.4,
-    platform: 'Paramount+',
-    poster_url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=600&q=80',
-    notes: 'A journey through a wormhole near Saturn. The docking scene with Hans Zimmer\'s No Time for Caution is peak cinema.'
-  },
-  {
-    title: 'Severance',
-    category: 'TV Show',
-    status: 'watching',
-    genre: 'Sci-Fi, Thriller, Mystery',
-    release_year: 2022,
-    rating: 9.0,
-    platform: 'Apple TV+',
-    poster_url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80',
-    notes: 'Lumon Industries work-life balance taken to the absolute extreme. Cliffhanger season finale.'
-  },
-  {
-    title: 'Arcane',
-    category: 'Anime',
-    status: 'completed',
-    genre: 'Animation, Action, Sci-Fi',
-    release_year: 2021,
-    rating: 9.8,
-    platform: 'Netflix',
-    poster_url: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=600&q=80',
-    notes: 'Visually stunning depiction of Piltover and Zaun. Incredible score and emotional voice acting.'
-  },
-  {
-    title: 'Dune: Part Two',
-    category: 'Movie',
-    status: 'completed',
-    genre: 'Sci-Fi, Adventure',
-    release_year: 2024,
-    rating: 9.2,
-    platform: 'HBO Max',
-    poster_url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=600&q=80',
-    notes: 'Denis Villeneuve delivers an immaculate adaptation of Frank Herbert\'s desert epic.'
-  },
-  {
-    title: 'The Bear',
-    category: 'TV Show',
-    status: 'plan_to_watch',
-    genre: 'Drama, Comedy',
-    release_year: 2022,
-    rating: 8.8,
-    platform: 'Hulu',
-    poster_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80',
-    notes: 'High intensity culinary drama in a Chicago Italian beef sandwich shop.'
-  }
-];
-
-let memoryItems = fallbackDemoTitles.map((item, idx) => ({
-  id: idx + 1,
-  ...item,
-  type: item.category,
-  created_at: new Date(Date.now() - idx * 86400000).toISOString(),
-  updated_at: new Date().toISOString()
-}));
-let nextMemoryId = memoryItems.length + 1;
+// In-memory store (empty by default; populated only when titles are added or fetched)
+let memoryItems = [];
+let nextMemoryId = 1;
 
 // High-Performance In-Memory Cache for 0ms-2ms Instantaneous Response
 let _cachedLibrary = null;
@@ -192,7 +128,7 @@ function formatRow(r) {
 /**
  * Get items with parameterized filters (Powered by High-Speed In-Memory Cache)
  */
-async function getItems({ status, category, type, search, sort, watchYear, releaseYear } = {}) {
+async function getItems({ status, category, type, search, sort = 'watched_date_desc', watchYear, releaseYear } = {}) {
   const chosenCategory = category || type;
   const all = await getFullLibrary();
   let list = [...all];
@@ -263,15 +199,8 @@ async function getItems({ status, category, type, search, sort, watchYear, relea
       if (!aHas && !bHas) return (a.id || 0) - (b.id || 0);
       return a.release_year - b.release_year || (a.id || 0) - (b.id || 0);
     });
-  } else if (sort === 'watched_date_desc') {
-    list.sort((a, b) => {
-      const aHas = Boolean(a.watched_date);
-      const bHas = Boolean(b.watched_date);
-      if (aHas && !bHas) return -1;
-      if (!aHas && bHas) return 1;
-      if (!aHas && !bHas) return (b.id || 0) - (a.id || 0);
-      return new Date(b.watched_date) - new Date(a.watched_date) || (b.id || 0) - (a.id || 0);
-    });
+  } else if (sort === 'created_at_desc') {
+    list.sort((a, b) => (b.id || 0) - (a.id || 0));
   } else if (sort === 'watched_date_asc') {
     list.sort((a, b) => {
       const aHas = Boolean(a.watched_date);
@@ -282,8 +211,15 @@ async function getItems({ status, category, type, search, sort, watchYear, relea
       return new Date(a.watched_date) - new Date(b.watched_date) || (a.id || 0) - (b.id || 0);
     });
   } else {
-    // default created_at_desc
-    list.sort((a, b) => (b.id || 0) - (a.id || 0));
+    // default watched_date_desc (Timeline: Recently Watched)
+    list.sort((a, b) => {
+      const aHas = Boolean(a.watched_date);
+      const bHas = Boolean(b.watched_date);
+      if (aHas && !bHas) return -1;
+      if (!aHas && bHas) return 1;
+      if (!aHas && !bHas) return (b.id || 0) - (a.id || 0);
+      return new Date(b.watched_date) - new Date(a.watched_date) || (b.id || 0) - (a.id || 0);
+    });
   }
 
   return list;

@@ -12,7 +12,7 @@ const state = {
     watchYear: 'all',
     releaseYear: 'all',
     search: '',
-    sort: 'created_at_desc'
+    sort: 'watched_date_desc'
   },
   editingId: null,
   selectedIds: new Set()
@@ -324,7 +324,7 @@ function updateResetButtonVisibility() {
     state.filters.watchYear !== 'all' ||
     state.filters.releaseYear !== 'all' ||
     state.filters.search.trim() !== '' ||
-    state.filters.sort !== 'created_at_desc';
+    state.filters.sort !== 'watched_date_desc';
 
   elements.resetFiltersBtn.classList.toggle('hidden', !hasActive);
 }
@@ -336,14 +336,14 @@ function resetAllFilters() {
   state.filters.watchYear = 'all';
   state.filters.releaseYear = 'all';
   state.filters.search = '';
-  state.filters.sort = 'created_at_desc';
+  state.filters.sort = 'watched_date_desc';
 
   elements.searchInput.value = '';
   elements.clearSearchBtn.classList.add('hidden');
   elements.typeFilter.value = 'all';
   if (elements.watchYearFilter) elements.watchYearFilter.value = 'all';
   if (elements.releaseYearFilter) elements.releaseYearFilter.value = 'all';
-  elements.sortBy.value = 'created_at_desc';
+  elements.sortBy.value = 'watched_date_desc';
 
   elements.statusFilterTabs.querySelectorAll('.filter-tab').forEach((t) => {
     t.classList.toggle('active', t.dataset.status === 'all');

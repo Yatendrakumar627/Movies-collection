@@ -17,9 +17,8 @@ app.use(express.json());
 const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
-} else {
-  app.use(express.static(path.join(__dirname, 'public')));
 }
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ==============================================================
 // REST API ROUTES

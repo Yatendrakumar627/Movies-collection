@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Watched — Cinema & Series Journal</title>
   <meta name="description" content="A curated personal cinema and series journal to track movies, TV shows, and anime in a sleek luxury interface.">
+  <meta name="theme-color" content="#120224">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=2">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=2">
+  <link rel="shortcut icon" href="favicon.ico?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2">
+  <link rel="manifest" href="site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -20,9 +27,7 @@
     <div class="header-container">
       <div class="brand">
         <div class="brand-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="white" stroke="currentColor" stroke-width="0">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-          </svg>
+          <img src="favicon.svg" width="28" height="28" alt="Watched Neon Emblem" style="display:block;filter:drop-shadow(0 0 8px rgba(236,72,153,0.6));border-radius:7px;" />
         </div>
         <div class="brand-text">
           <span class="logo-title">Watched</span>
@@ -193,10 +198,10 @@
         <!-- Sort By -->
         <div class="select-wrapper">
           <select id="sortBy" aria-label="Sort by">
+            <option value="watched_date_desc" selected>Timeline: Recently Watched</option>
+            <option value="watched_date_asc">Timeline: Oldest Watched</option>
             <option value="created_at_desc">Newest Added</option>
             <option value="created_at_asc">Oldest Added (Original Order)</option>
-            <option value="watched_date_desc">Timeline: Recently Watched</option>
-            <option value="watched_date_asc">Timeline: Oldest Watched</option>
             <option value="rating_desc">Highest Rated (5★ → 1★)</option>
             <option value="rating_asc">Lowest Rated (1★ → 5★)</option>
             <option value="year_desc">Released: Newest First</option>

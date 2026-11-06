@@ -1,6 +1,50 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Search, Bell, Moon, Sun, Plus, FileSpreadsheet, Info, Play, Sparkles } from 'lucide-react';
 
+function BrandNeonEmblem() {
+  return (
+    <svg
+      viewBox="0 0 128 128"
+      className="brand-neon-emblem"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <defs>
+        <radialGradient id="badge-bg-glow" cx="50%" cy="50%" r="65%">
+          <stop offset="0%" stopColor="#2a0845" stopOpacity="0.9" />
+          <stop offset="60%" stopColor="#120224" stopOpacity="0.98" />
+          <stop offset="100%" stopColor="#07010f" stopOpacity="1" />
+        </radialGradient>
+        <radialGradient id="badge-ambient-cyan" cx="20%" cy="80%" r="50%">
+          <stop offset="0%" stopColor="#00f2fe" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#00f2fe" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="badge-ambient-magenta" cx="70%" cy="30%" r="55%">
+          <stop offset="0%" stopColor="#ff007f" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="#ff007f" stopOpacity="0" />
+        </radialGradient>
+        <filter id="badge-neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="5" result="blur1" />
+          <feGaussianBlur stdDeviation="2.5" result="blur2" />
+          <feMerge>
+            <feMergeNode in="blur1" />
+            <feMergeNode in="blur2" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#badge-bg-glow)" stroke="#ff007f" strokeOpacity="0.25" strokeWidth="1.5" />
+      <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#badge-ambient-cyan)" />
+      <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#badge-ambient-magenta)" />
+      <g filter="url(#badge-neon-glow)">
+        <polygon points="46,38 88,64 46,90" fill="none" stroke="#e0007b" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
+        <polygon points="46,38 88,64 46,90" fill="none" stroke="#d946ef" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
+        <polygon points="46,38 88,64 46,90" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+    </svg>
+  );
+}
+
 export default function Header({
   search,
   onSearchChange,
@@ -40,6 +84,7 @@ export default function Header({
     <header className="hero-cinema-header">
       {/* Background Cinematic Atmosphere */}
       <div className="hero-backdrop-graphic" aria-hidden="true">
+        <div className="cinema-neon-bg-layer" style={{ backgroundImage: 'url(/cinema-neon-banner.jpg)' }}></div>
         <div className="cinema-glow-orb orb-purple"></div>
         <div className="cinema-glow-orb orb-amber"></div>
         <div className="cinema-clapper-art">
@@ -80,6 +125,13 @@ export default function Header({
         {/* Top Navigation Row: Greeting & Universal Top Bar */}
         <div className="hero-top-row">
           <div className="hero-greeting-block">
+            <div className="hero-brand-badge">
+              <span className="brand-badge-icon">
+                <BrandNeonEmblem />
+              </span>
+              <span className="brand-badge-text">WATCHED CINEMA</span>
+              <span className="brand-badge-tag">JOURNAL</span>
+            </div>
             <h1 className="hero-greeting-title">
               {greeting},{' '}
               <span className="hero-name-gradient">{userName}</span>{' '}

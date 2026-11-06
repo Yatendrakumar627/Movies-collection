@@ -4,6 +4,7 @@ import StatsCards from './components/StatsCards';
 import Controls from './components/Controls';
 import MediaCard from './components/MediaCard';
 import ItemModal from './components/ItemModal';
+import DetailModal from './components/DetailModal';
 import AboutModal from './components/AboutModal';
 import BulkActionBar from './components/BulkActionBar';
 import Toast from './components/Toast';
@@ -36,7 +37,7 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [watchYearFilter, setWatchYearFilter] = useState('all');
   const [releaseYearFilter, setReleaseYearFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('created_at_desc');
+  const [sortBy, setSortBy] = useState('watched_date_desc');
 
   // Dynamic filter options from DB
   const [filterOptions, setFilterOptions] = useState({ watchYears: [], releaseYears: [] });
@@ -76,10 +77,11 @@ export default function App() {
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState(null);
 
   // Lock body scroll whenever a modal is open (Prevents mobile background scroll bleed)
   useEffect(() => {
-    const isAnyModalOpen = isItemModalOpen || isAboutOpen;
+    const isAnyModalOpen = isItemModalOpen || isAboutOpen || !!detailItem;
     if (isAnyModalOpen) {
       const scrollY = window.scrollY || document.documentElement.scrollTop;
       document.body.style.position = 'fixed';
@@ -99,7 +101,7 @@ export default function App() {
         window.scrollTo(0, scrollYPos);
       };
     }
-  }, [isItemModalOpen, isAboutOpen]);
+  }, [isItemModalOpen, isAboutOpen, detailItem]);
 
   // Toasts
   const [toasts, setToasts] = useState([]);
@@ -181,7 +183,7 @@ export default function App() {
     categoryFilter !== 'all' ||
     watchYearFilter !== 'all' ||
     releaseYearFilter !== 'all' ||
-    sortBy !== 'created_at_desc';
+    sortBy !== 'watched_date_desc';
 
   const handleResetFilters = () => {
     setSearch('');
@@ -189,7 +191,7 @@ export default function App() {
     setCategoryFilter('all');
     setWatchYearFilter('all');
     setReleaseYearFilter('all');
-    setSortBy('created_at_desc');
+    setSortBy('watched_date_desc');
   };
 
   // Handle Save (Create or Update)
@@ -240,6 +242,7 @@ export default function App() {
       }
 
       addToast('Status updated', 'success');
+      setDetailItem((prev) => (prev && prev.id === id ? { ...prev, status: newStatus } : prev));
       fetchItems();
       fetchStats();
     } catch (e) {
@@ -258,6 +261,7 @@ export default function App() {
       if (!res.ok) throw new Error('Failed to delete item');
 
       addToast(`Removed "${title}"`, 'success');
+      setDetailItem((prev) => (prev && prev.id === id ? null : prev));
       fetchItems();
       fetchStats();
       fetchFilterOptions();
@@ -310,16 +314,22 @@ export default function App() {
     setSelectedIds(new Set());
   };
 
-  // Keyboard shortcut: Esc to clear selection when modals are closed
+  // Keyboard shortcut: Esc to close detail modal or clear selection
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && !isItemModalOpen && !isAboutOpen && selectedIds.size > 0) {
-        setSelectedIds(new Set());
+      if (e.key === 'Escape') {
+        if (detailItem) {
+          setDetailItem(null);
+          return;
+        }
+        if (!isItemModalOpen && !isAboutOpen && selectedIds.size > 0) {
+          setSelectedIds(new Set());
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isItemModalOpen, isAboutOpen, selectedIds.size]);
+  }, [isItemModalOpen, isAboutOpen, detailItem, selectedIds.size]);
 
   // Bulk Status Update
   const handleBulkStatus = async (status) => {
@@ -514,6 +524,7 @@ export default function App() {
                   onEdit={handleOpenEdit}
                   onDelete={handleDeleteItem}
                   onStatusChange={handleStatusChange}
+                  onOpenDetail={setDetailItem}
                   isSelected={selectedIds.has(item.id)}
                   onToggleSelect={handleToggleSelect}
                   viewMode={viewMode}
@@ -534,7 +545,7 @@ export default function App() {
         {/* Floating Action Button */}
         <button
           type="button"
-          className="floating-export-btn"
+          className={`floating-export-btn ${selectedIds.size > 0 ? 'fab-hidden-bulk' : ''}`}
           onClick={handleExportExcel}
           title="Instant Export to Excel"
           aria-label="Export to Excel"
@@ -560,6 +571,18 @@ export default function App() {
         onSave={handleSaveItem}
         item={editingItem}
         existingItems={items}
+      />
+
+      <DetailModal
+        isOpen={!!detailItem}
+        item={detailItem}
+        onClose={() => setDetailItem(null)}
+        onEdit={(item) => {
+          setDetailItem(null);
+          handleOpenEdit(item);
+        }}
+        onDelete={handleDeleteItem}
+        onStatusChange={handleStatusChange}
       />
 
       <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />

@@ -121,7 +121,7 @@ export default function Controls({
             aria-label="Filter by watching year timeline"
             className="pill-select"
           >
-            <option value="all">Watching Year (All Timeline)</option>
+            <option value="all">Watching Year</option>
             {watchYears.map((yr) => (
               <option key={yr} value={yr}>
                 Watched in {yr}
@@ -139,7 +139,7 @@ export default function Controls({
             aria-label="Filter by release year"
             className="pill-select"
           >
-            <option value="all">Release Year (All)</option>
+            <option value="all">Release Year</option>
             {releaseYears.map((yr) => (
               <option key={yr} value={yr}>
                 Year {yr}
@@ -157,10 +157,10 @@ export default function Controls({
             aria-label="Sort order"
             className="pill-select"
           >
+            <option value="watched_date_desc">Recent Watched</option>
+            <option value="watched_date_asc">Oldest Watched</option>
             <option value="created_at_desc">Newest Added</option>
             <option value="created_at_asc">Oldest Added</option>
-            <option value="watched_date_desc">Timeline: Recently Watched</option>
-            <option value="watched_date_asc">Timeline: Oldest Watched</option>
             <option value="rating_desc">Highest Rated (10 → 0)</option>
             <option value="rating_asc">Lowest Rated (0 → 10)</option>
             <option value="year_desc">Released: Newest First</option>

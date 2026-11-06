@@ -1,0 +1,36 @@
+{
+  "name": "Watched — Cinema & Series Journal",
+  "short_name": "Watched",
+  "description": "Curated personal cinema and series journal to track movies, TV shows, and anime in a sleek luxury interface.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0715",
+  "theme_color": "#120224",
+  "icons": [
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
