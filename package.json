@@ -10,6 +10,7 @@
     "build": "vite build && node -e \"const fs=require('fs'); ['favicon.ico','favicon.svg','favicon-32x32.png','favicon-16x16.png','apple-touch-icon.png','icon-192.png','icon-512.png','site.webmanifest','cinema-neon-banner.jpg'].forEach(f => fs.existsSync('public/'+f) && fs.copyFileSync('public/'+f, 'dist/'+f))\"",
     "preview": "vite preview",
     "start": "node server.js",
+    "test": "node --test tests/**/*.test.js",
     "import": "node scripts/import.js",
     "backup": "node scripts/backup.js",
     "export": "node scripts/export-excel.js"

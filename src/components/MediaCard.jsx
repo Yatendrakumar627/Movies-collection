@@ -1,47 +1,56 @@
-import React, { useState, useEffect, useRef, memo } from 'react';
-import { Star, Bookmark, Check, MoreHorizontal, Edit, Trash2, Calendar, Eye, Film } from 'lucide-react';
+import React, { memo, useState, useRef, useEffect } from 'react';
+import {
+  Star,
+  MoreHorizontal,
+  Bookmark,
+  Calendar,
+  Eye,
+  Edit,
+  Trash2,
+  Check
+} from 'lucide-react';
 
-// Format YYYY-MM-DD to legible British English format: 28 Oct 2026
+/**
+ * Format ISO / date string to clean display string (e.g. "28 Oct 2026")
+ */
 function formatDisplayDate(dateStr) {
   if (!dateStr) return '';
   try {
-    const raw = String(dateStr).substring(0, 10);
-    const parts = raw.split('-');
-    if (parts.length === 3) {
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parseInt(parts[2], 10);
-      const date = new Date(Date.UTC(year, month, day));
-      return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
-    }
-    return raw;
-  } catch {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  } catch (e) {
     return dateStr;
   }
 }
 
-// O(1) Memory Cache for Procedural Gradients
+/**
+ * Procedural gradient background cache for titles missing poster artwork
+ */
 const gradientCache = new Map();
-
-function getCachedGradient(title = '', cat = '') {
-  const key = `${cat}_${title}`;
+function getCachedGradient(title = '', category = '') {
+  const key = `${title}:${category}`;
   if (gradientCache.has(key)) return gradientCache.get(key);
 
-  let grad;
-  if (String(cat).toLowerCase() === 'anime') {
-    grad = 'linear-gradient(145deg, #4A0E4E 0%, #1E1B4B 60%, #172554 100%)';
-  } else {
-    let hash = 0;
-    for (let i = 0; i < title.length; i++) {
-      hash = title.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const hue1 = Math.abs(hash % 360);
-    const hue2 = (hue1 + 45) % 360;
-    grad = `linear-gradient(145deg, hsl(${hue1}, 65%, 22%) 0%, hsl(${hue2}, 55%, 10%) 100%)`;
+  const colors = [
+    ['#311042', '#12072B'],
+    ['#1A1C4B', '#0D0826'],
+    ['#4A1228', '#1F071A'],
+    ['#13382C', '#081C15'],
+    ['#3B220B', '#1C0E04'],
+    ['#261B40', '#0D0924'],
+    ['#1E293B', '#0F172A']
+  ];
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash << 5) - hash + key.charCodeAt(i);
+    hash |= 0;
   }
-
-  gradientCache.set(key, grad);
-  return grad;
+  const pair = colors[Math.abs(hash) % colors.length];
+  const gradient = `linear-gradient(135deg, ${pair[0]} 0%, ${pair[1]} 100%)`;
+  gradientCache.set(key, gradient);
+  return gradient;
 }
 
 function MediaCard({
@@ -64,7 +73,7 @@ function MediaCard({
     if (!showMenu && menuAnchorRef.current) {
       const rect = menuAnchorRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
-      // Dropdown menu is ~180px tall. Flip upwards if not enough room below and room above
+      // Dropdown menu is ~180px tall. Flip upwards if not enough room below
       if (spaceBelow < 190 && rect.top > spaceBelow) {
         setOpenUpward(true);
       } else {
@@ -95,18 +104,30 @@ function MediaCard({
   const starCount = Math.round(numRating / 2);
   const displayScore = numRating > 0 ? numRating.toFixed(1) : '-';
 
-  // Format category badge text (e.g. "TO WATCH", "BOLLYWOOD")
-  const categoryBadge = (item.status === 'plan_to_watch'
-    ? 'TO WATCH'
-    : (item.category || item.type || 'BOLLYWOOD')
-  ).toUpperCase();
+  // 4-Dimensional Metadata
+  const contentType = item.content_type || item.type || 'Movie';
+  const origin = item.origin || 'Bollywood';
+  const isUploaded = (item.availability || '').toLowerCase() === 'uploaded';
 
-  // Subtitle metadata line (e.g. "Bollywood • Watched" or "Hollywood • Plan to Watch")
-  const metaLine = `${item.category || 'Cinema'} • ${item.status === 'completed' ? 'Watched' : item.status === 'watching' ? 'Watching' : 'Plan to Watch'}`;
+  // Subtitle metadata line (Matching Image 2: "2023 · Movie · Bollywood")
+  const metaParts = [];
+  if (item.release_year) metaParts.push(item.release_year);
+  metaParts.push(contentType);
+  metaParts.push(origin);
+  const metaLine = metaParts.join(' · ');
 
-  // Formatted watched/watching date (e.g. "28 Oct 2026")
+  // Status Badge Label
+  const statusLabel =
+    item.status === 'completed'
+      ? 'Watched'
+      : item.status === 'watching'
+      ? 'Watching'
+      : item.status === 'dropped'
+      ? 'Dropped'
+      : 'To Watch';
+
+  // Formatted watched/watching date
   const watchedDateStr = item.watched_date ? formatDisplayDate(item.watched_date) : '';
-
   const hasRealPoster = item.poster_url && !imgError;
 
   // ==============================================================
@@ -161,27 +182,26 @@ function MediaCard({
           )}
         </div>
 
-        {/* Middle: Rich Content Info */}
+        {/* Middle: Rich Content Info with 4 Dimensions */}
         <div className="list-content-body">
           <div className="list-title-row">
             <h3 className="list-movie-title" title={item.title}>
               {item.title}
             </h3>
-            {item.release_year && (
-              <span className="list-year-tag">{item.release_year}</span>
-            )}
-            <span className="list-category-tag" title={item.category || item.type || 'Cinema'}>
-              {item.category || item.type || 'Cinema'}
-            </span>
-            <span className={`list-status-tag status-${item.status}`}>
-              {item.status === 'completed' ? 'Watched' : item.status === 'watching' ? 'Watching' : 'Plan to Watch'}
-            </span>
           </div>
 
-          <div className="list-meta-subrow">
+          <p className="list-meta-subtitle">{metaLine}</p>
+
+          <div className="list-dimension-badges">
+            {isUploaded && (
+              <span className="dimension-badge badge-uploaded">Uploaded</span>
+            )}
+            <span className={`dimension-badge badge-status status-${item.status || 'plan_to_watch'}`}>
+              {statusLabel}
+            </span>
             {watchedDateStr && (
               <span className="list-date-chip">
-                <Calendar size={12} className="list-cal-icon" aria-hidden="true" />
+                <Calendar size={11} className="list-cal-icon" aria-hidden="true" />
                 <span>{watchedDateStr}</span>
               </span>
             )}
@@ -252,7 +272,7 @@ function MediaCard({
                     className="dropdown-menu-item"
                     onClick={() => {
                       setShowMenu(false);
-                      onEdit(item);
+                      if (onEdit) onEdit(item);
                     }}
                   >
                     <Edit size={13} />
@@ -264,7 +284,7 @@ function MediaCard({
                     onClick={() => {
                       setShowMenu(false);
                       const next = item.status === 'completed' ? 'plan_to_watch' : 'completed';
-                      onStatusChange(item.id, next);
+                      if (onStatusChange) onStatusChange(item.id, next);
                     }}
                   >
                     <Check size={13} />
@@ -275,7 +295,7 @@ function MediaCard({
                     className="dropdown-menu-item delete-item"
                     onClick={() => {
                       setShowMenu(false);
-                      onDelete(item.id, item.title);
+                      if (onDelete) onDelete(item.id, item.title);
                     }}
                   >
                     <Trash2 size={13} />
@@ -291,7 +311,7 @@ function MediaCard({
   }
 
   // ==============================================================
-  // 2. GRID POSTER VIEW RENDERING
+  // 2. GRID POSTER VIEW RENDERING (Matching Image 2)
   // ==============================================================
   return (
     <article
@@ -333,8 +353,8 @@ function MediaCard({
 
         {/* Top Floating Badges */}
         <div className="poster-top-bar">
-          <span className="poster-category-pill" title={categoryBadge}>
-            {categoryBadge}
+          <span className="poster-category-pill" title={contentType}>
+            {contentType.toUpperCase()}
           </span>
 
           <div className="poster-top-actions">
@@ -370,20 +390,27 @@ function MediaCard({
         </div>
       </div>
 
-      {/* Card Info Section */}
+      {/* Card Info Section (Matching Image 2) */}
       <div className="poster-card-body">
-        {/* Title & Release Year Row */}
+        {/* Title */}
         <div className="poster-title-row">
           <h3 className="poster-movie-title" title={item.title}>
             {item.title}
           </h3>
-          {item.release_year && (
-            <span className="poster-year-badge">{item.release_year}</span>
-          )}
         </div>
 
-        {/* Subtitle Meta */}
+        {/* Subtitle Meta (e.g. "2023 · Movie · Bollywood") */}
         <p className="poster-meta-subtitle">{metaLine}</p>
+
+        {/* Dimension Badges (Uploaded & Status Badges) */}
+        <div className="card-dimension-badges">
+          {isUploaded && (
+            <span className="dimension-badge badge-uploaded">Uploaded</span>
+          )}
+          <span className={`dimension-badge badge-status status-${item.status || 'plan_to_watch'}`}>
+            {statusLabel}
+          </span>
+        </div>
 
         {/* Watching Date Badge (Shown when content has a watched/watching date) */}
         {watchedDateStr && (
@@ -415,7 +442,7 @@ function MediaCard({
             {/* Quick Context Popup Menu */}
             {showMenu && (
               <div
-                className="poster-dropdown-menu"
+                className={`poster-dropdown-menu ${openUpward ? 'menu-open-up' : ''}`}
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
@@ -434,7 +461,7 @@ function MediaCard({
                   className="dropdown-menu-item"
                   onClick={() => {
                     setShowMenu(false);
-                    onEdit(item);
+                    if (onEdit) onEdit(item);
                   }}
                 >
                   <Edit size={13} />
@@ -446,7 +473,7 @@ function MediaCard({
                   onClick={() => {
                     setShowMenu(false);
                     const next = item.status === 'completed' ? 'plan_to_watch' : 'completed';
-                    onStatusChange(item.id, next);
+                    if (onStatusChange) onStatusChange(item.id, next);
                   }}
                 >
                   <Check size={13} />
@@ -457,7 +484,7 @@ function MediaCard({
                   className="dropdown-menu-item delete-item"
                   onClick={() => {
                     setShowMenu(false);
-                    onDelete(item.id, item.title);
+                    if (onDelete) onDelete(item.id, item.title);
                   }}
                 >
                   <Trash2 size={13} />

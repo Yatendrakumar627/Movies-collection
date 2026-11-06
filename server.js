@@ -31,13 +31,16 @@ app.get('/api/health', async (req, res) => {
   res.status(ok ? 200 : 503).json({ ok });
 });
 
-// Get watchlist items with query parameters: status, category, type, search, sort, watchYear, releaseYear
+// Get watchlist items with query parameters: status, category, type, content_type, origin, availability, search, sort, watchYear, releaseYear
 app.get('/api/items', async (req, res) => {
   try {
-    const { status, type, category, search, sort, watchYear, watch_year, releaseYear, release_year } = req.query;
+    const { status, type, category, content_type, origin, availability, search, sort, watchYear, watch_year, releaseYear, release_year } = req.query;
     const items = await db.getItems({
       status,
       category: category || type,
+      content_type,
+      origin,
+      availability,
       search,
       sort,
       watchYear: watchYear || watch_year,
@@ -65,6 +68,21 @@ app.get('/api/filter-options', async (req, res) => {
   }
 });
 
+// Real-time duplicate check endpoint (Title + Content Type check)
+app.get('/api/items/check-duplicate', async (req, res) => {
+  try {
+    const { title, content_type, contentType, excludeId } = req.query;
+    const match = await db.findDuplicate(title, content_type || contentType, excludeId);
+    res.json({
+      isDuplicate: Boolean(match),
+      match: match || null
+    });
+  } catch (err) {
+    console.error('Error checking duplicate:', err);
+    res.status(500).json({ error: 'Failed to check duplicate' });
+  }
+});
+
 // Get single item by ID
 app.get('/api/items/:id', async (req, res) => {
   try {
@@ -82,7 +100,7 @@ app.get('/api/items/:id', async (req, res) => {
 // Add new title to watchlist
 app.post('/api/items', async (req, res) => {
   try {
-    const { title, type, category, status, genre, release_year, rating, watched_date, platform, poster_url, notes } = req.body;
+    const { title, content_type, origin, availability, type, category, status, genre, release_year, rating, watched_date, platform, poster_url, notes } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ error: 'Title is required' });
@@ -90,8 +108,10 @@ app.post('/api/items', async (req, res) => {
 
     const newItem = await db.createItem({
       title: title.trim(),
-      type,
-      category,
+      content_type: content_type || type || category,
+      origin,
+      availability,
+      category: category || content_type || type,
       status,
       genre,
       release_year,
@@ -119,7 +139,7 @@ app.post('/api/items', async (req, res) => {
 // Update title details
 app.put('/api/items/:id', async (req, res) => {
   try {
-    const { title, type, category, status, genre, release_year, rating, watched_date, platform, poster_url, notes } = req.body;
+    const { title, content_type, origin, availability, type, category, status, genre, release_year, rating, watched_date, platform, poster_url, notes } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ error: 'Title is required' });
@@ -127,8 +147,10 @@ app.put('/api/items/:id', async (req, res) => {
 
     const updated = await db.updateItem(req.params.id, {
       title: title.trim(),
-      type,
-      category,
+      content_type: content_type || type || category,
+      origin,
+      availability,
+      category: category || content_type || type,
       status,
       genre,
       release_year,
@@ -213,11 +235,11 @@ app.post('/api/items/bulk/status', async (req, res) => {
     const cleanStatus = status.trim().toLowerCase() === 'watched' ? 'completed' : status.trim();
 
     const updated = await db.bulkUpdateStatus(ids, cleanStatus);
+    const count = typeof updated === 'number' ? updated : (Array.isArray(updated) ? updated.length : 0);
     res.json({
       success: true,
-      message: `Updated status for ${updated.length} item(s)`,
-      count: updated.length,
-      items: updated
+      message: `Updated status for ${count} item(s)`,
+      count
     });
   } catch (err) {
     console.error('Error in POST /api/items/bulk/status:', err);
@@ -237,11 +259,11 @@ app.post('/api/items/bulk/category', async (req, res) => {
     }
 
     const updated = await db.bulkUpdateCategory(ids, category.trim());
+    const count = typeof updated === 'number' ? updated : (Array.isArray(updated) ? updated.length : 0);
     res.json({
       success: true,
-      message: `Updated category for ${updated.length} item(s)`,
-      count: updated.length,
-      items: updated
+      message: `Updated category for ${count} item(s)`,
+      count
     });
   } catch (err) {
     console.error('Error in POST /api/items/bulk/category:', err);

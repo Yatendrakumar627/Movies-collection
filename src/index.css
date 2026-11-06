@@ -5852,3 +5852,210 @@ body[data-theme="light"] {
     padding: 0.75rem 1rem max(1.15rem, env(safe-area-inset-bottom)) !important;
   }
 }
+
+/* ==========================================================================
+   4-DIMENSION ARCHITECTURE LUXURY STYLING (Matching Images 1 & 2)
+   ========================================================================== */
+
+/* 1. Modal 4-Dimensions Panel */
+.four-dimensions-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  background: rgba(14, 11, 24, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  padding: 1.15rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.dimension-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dimension-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.dimension-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #F8FAFC;
+  letter-spacing: -0.01em;
+}
+
+.dimension-question {
+  font-size: 0.75rem;
+  color: #94A3B8;
+}
+
+.dimension-pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.dimension-pill-btn {
+  padding: 0.35rem 0.8rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #CBD5E1;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+}
+
+.dimension-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Active Color Styles */
+.dimension-pill-btn.active-pill.blue {
+  background: #0284C7;
+  border-color: #38BDF8;
+  color: #FFFFFF;
+  box-shadow: 0 0 14px rgba(2, 132, 199, 0.45);
+}
+
+.dimension-pill-btn.active-pill.purple {
+  background: #7C3AED;
+  border-color: #A855F7;
+  color: #FFFFFF;
+  box-shadow: 0 0 14px rgba(124, 58, 237, 0.45);
+}
+
+.dimension-pill-btn.active-pill.green {
+  background: #059669;
+  border-color: #34D399;
+  color: #FFFFFF;
+  box-shadow: 0 0 14px rgba(5, 150, 105, 0.45);
+}
+
+.dimension-pill-btn.active-pill.orange {
+  background: #D97706;
+  border-color: #FBBF24;
+  color: #FFFFFF;
+  box-shadow: 0 0 14px rgba(217, 119, 6, 0.45);
+}
+
+.dimension-pill-btn.active-pill.red {
+  background: #DC2626;
+  border-color: #F87171;
+  color: #FFFFFF;
+  box-shadow: 0 0 14px rgba(220, 38, 38, 0.45);
+}
+
+/* 2. Card Badges (Matching Image 2) */
+.poster-top-left-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.poster-uploaded-pill {
+  background: rgba(16, 185, 129, 0.25);
+  border: 1px solid rgba(52, 211, 153, 0.5);
+  color: #34D399;
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.card-dimension-badges,
+.list-dimension-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.dimension-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+.dimension-badge.badge-uploaded {
+  background: #064E3B;
+  color: #34D399;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.25);
+}
+
+.dimension-badge.badge-status.status-plan_to_watch {
+  background: #78350F;
+  color: #FBBF24;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.dimension-badge.badge-status.status-completed {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34D399;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
+.dimension-badge.badge-status.status-watching {
+  background: rgba(14, 165, 233, 0.2);
+  color: #38BDF8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.dimension-badge.badge-status.status-dropped {
+  background: rgba(239, 68, 68, 0.2);
+  color: #F87171;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+/* Detail Modal Uploaded Pill */
+.detail-top-left-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.detail-uploaded-pill {
+  background: rgba(16, 185, 129, 0.28);
+  border: 1px solid rgba(52, 211, 153, 0.55);
+  color: #34D399;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.25rem 0.55rem;
+  border-radius: 8px;
+  letter-spacing: 0.04em;
+}
+
+/* 3. Dropdown Menu High Z-Index & Clip Prevention */
+.cinema-poster-card.card-menu-open {
+  z-index: 1000 !important;
+  content-visibility: visible !important;
+  contain: none !important;
+}
+
+.card-menu-open .poster-menu-anchor {
+  z-index: 1001 !important;
+}
+
+.poster-dropdown-menu {
+  z-index: 99999 !important;
+}
+
+.list-dropdown-menu {
+  z-index: 99999 !important;
+}

@@ -3,17 +3,21 @@
  * Database service layer wrapping /api/_db.js
  * 
  * - Works directly with Neon Serverless Postgres via parameterized queries
- * - Uses the "titles" table with "category" column
- * - Graceful fallback to demo in-memory store if DATABASE_URL is not yet provided
+ * - 4-Dimensional Architecture:
+ *     Dimension 1 — Content Type: Movie, Web Series, Documentary
+ *     Dimension 2 — Industry / Origin: Bollywood, Hollywood, Anime, South Indian, Korean, Japanese, Other
+ *     Dimension 3 — Availability: Uploaded, Not Uploaded
+ *     Dimension 4 — Watch Status: completed, watching, plan_to_watch, dropped
+ * - High-speed in-memory cache for instant 0ms-2ms queries
  */
 
 const _db = require('./api/_db');
 
-// In-memory store (empty by default; populated only when titles are added or fetched)
+// In-memory store (fallback if DATABASE_URL is not configured)
 let memoryItems = [];
 let nextMemoryId = 1;
 
-// High-Performance In-Memory Cache for 0ms-2ms Instantaneous Response
+// High-Performance In-Memory Cache
 let _cachedLibrary = null;
 let _cachedTimestamp = 0;
 const CACHE_TTL_MS = 60 * 1000;
@@ -32,7 +36,9 @@ async function getFullLibrary(forceRefresh = false) {
   if (_db.isConfigured()) {
     try {
       const rows = await _db.query(
-        'SELECT id, title, category, status, genre, release_year, rating, platform, poster_url, notes, watched_date::text AS watched_date, created_at, updated_at FROM titles ORDER BY id DESC;'
+        `SELECT id, title, content_type, origin, availability, category, status, genre, release_year, rating, platform, poster_url, notes, watched_date::text AS watched_date, created_at, updated_at 
+         FROM titles 
+         ORDER BY id DESC;`
       );
       _cachedLibrary = rows.map(formatRow);
       _cachedTimestamp = now;
@@ -60,6 +66,9 @@ async function initDb() {
       CREATE TABLE IF NOT EXISTS titles (
         id SERIAL PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
+        content_type VARCHAR(50) NOT NULL DEFAULT 'Movie',
+        origin VARCHAR(50) NOT NULL DEFAULT 'Bollywood',
+        availability VARCHAR(50) NOT NULL DEFAULT 'Not Uploaded',
         category VARCHAR(50) NOT NULL DEFAULT 'Movie',
         status VARCHAR(50) NOT NULL DEFAULT 'plan_to_watch',
         genre VARCHAR(100),
@@ -68,18 +77,28 @@ async function initDb() {
         platform VARCHAR(100),
         poster_url TEXT,
         notes TEXT,
+        watched_date DATE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
+    // Ensure 4-dimension columns exist
+    await _db.query(`ALTER TABLE titles ADD COLUMN IF NOT EXISTS content_type VARCHAR(50) DEFAULT 'Movie';`);
+    await _db.query(`ALTER TABLE titles ADD COLUMN IF NOT EXISTS origin VARCHAR(50) DEFAULT 'Bollywood';`);
+    await _db.query(`ALTER TABLE titles ADD COLUMN IF NOT EXISTS availability VARCHAR(50) DEFAULT 'Not Uploaded';`);
+    await _db.query(`ALTER TABLE titles ADD COLUMN IF NOT EXISTS watched_date DATE;`);
+
+    // Ensure indexes
+    await _db.query(`CREATE INDEX IF NOT EXISTS idx_titles_content_type ON titles(content_type);`);
+    await _db.query(`CREATE INDEX IF NOT EXISTS idx_titles_origin ON titles(origin);`);
+    await _db.query(`CREATE INDEX IF NOT EXISTS idx_titles_availability ON titles(availability);`);
     await _db.query(`CREATE INDEX IF NOT EXISTS idx_titles_category ON titles(category);`);
     await _db.query(`CREATE INDEX IF NOT EXISTS idx_titles_status ON titles(status);`);
-    await _db.query(`ALTER TABLE titles ADD COLUMN IF NOT EXISTS watched_date DATE;`);
     await _db.query(`CREATE INDEX IF NOT EXISTS idx_titles_watched_date ON titles(watched_date);`);
 
-    console.log('🚀 Neon Database initialized successfully.');
-    // Pre-warm high-speed in-memory cache in background
+    console.log('🚀 Neon Database initialized successfully with 4-Dimension schema.');
+    // Pre-warm cache
     getFullLibrary(true).then(list => console.log(`⚡ In-memory cache warmed up with ${list.length} titles.`)).catch(() => {});
   } catch (err) {
     console.warn(`[Neon DB init warning]: ${err.message}. Running fallback mode.`);
@@ -101,7 +120,11 @@ async function healthCheck() {
  */
 function formatRow(r) {
   if (!r) return null;
-  const category = r.category || r.type || 'Movie';
+  const contentType = r.content_type || 'Movie';
+  const origin = r.origin || 'Bollywood';
+  const availability = r.availability || 'Not Uploaded';
+  const category = r.category || contentType;
+
   let formattedWatchedDate = null;
   if (r.watched_date) {
     if (typeof r.watched_date === 'string') {
@@ -117,8 +140,12 @@ function formatRow(r) {
   return {
     ...r,
     id: parseInt(r.id, 10),
+    content_type: contentType,
+    origin,
+    availability,
     category,
-    type: category, // Keep compatibility with type-based filters
+    type: contentType, // Compatibility
+    status: r.status || 'plan_to_watch',
     rating: r.rating != null ? parseFloat(r.rating) : 0.0,
     release_year: r.release_year != null ? parseInt(r.release_year, 10) : null,
     watched_date: formattedWatchedDate
@@ -128,36 +155,112 @@ function formatRow(r) {
 /**
  * Get items with parameterized filters (Powered by High-Speed In-Memory Cache)
  */
-async function getItems({ status, category, type, search, sort = 'watched_date_desc', watchYear, releaseYear } = {}) {
-  const chosenCategory = category || type;
+async function getItems({
+  status,
+  category,
+  type,
+  content_type,
+  origin,
+  availability,
+  search,
+  sort = 'watched_date_desc',
+  watchYear,
+  releaseYear
+} = {}) {
   const all = await getFullLibrary();
   let list = [...all];
 
+  // 1. Direct Dimension Filters
+  if (content_type && content_type !== 'all') {
+    const ctLower = content_type.trim().toLowerCase();
+    list = list.filter(r => (r.content_type || '').toLowerCase() === ctLower);
+  }
+
+  if (origin && origin !== 'all') {
+    const oLower = origin.trim().toLowerCase();
+    list = list.filter(r => (r.origin || '').toLowerCase() === oLower);
+  }
+
+  if (availability && availability !== 'all') {
+    const aLower = availability.trim().toLowerCase();
+    list = list.filter(r => (r.availability || '').toLowerCase() === aLower);
+  }
+
   if (status && status !== 'all') {
-    const normStatus = status === 'watched' ? 'completed' : status;
+    const normStatus = status === 'watched' ? 'completed' : status === 'to_watch' ? 'plan_to_watch' : status;
     list = list.filter(r => r.status === normStatus);
   }
+
+  // 2. Smart Category Filter (Seamless Multi-View mapping)
+  const chosenCategory = category || type;
   if (chosenCategory && chosenCategory !== 'all') {
-    list = list.filter(r => r.category === chosenCategory || r.type === chosenCategory);
+    const catLower = chosenCategory.trim().toLowerCase();
+    if (catLower === 'movies' || catLower === 'movie') {
+      list = list.filter(r => (r.content_type || '').toLowerCase() === 'movie');
+    } else if (catLower === 'web series' || catLower === 'webseries' || catLower === 'series') {
+      list = list.filter(r => (r.content_type || '').toLowerCase() === 'web series');
+    } else if (catLower === 'anime') {
+      list = list.filter(r => (r.origin || '').toLowerCase() === 'anime' || (r.category || '').toLowerCase() === 'anime' || (r.content_type || '').toLowerCase() === 'anime');
+    } else if (catLower === 'documentary') {
+      list = list.filter(r => (r.content_type || '').toLowerCase() === 'documentary');
+    } else if (catLower === 'bollywood') {
+      list = list.filter(r => (r.origin || '').toLowerCase() === 'bollywood');
+    } else if (catLower === 'hollywood') {
+      list = list.filter(r => (r.origin || '').toLowerCase() === 'hollywood');
+    } else if (catLower === 'south' || catLower === 'south indian') {
+      list = list.filter(r => (r.origin || '').toLowerCase() === 'south indian');
+    } else if (catLower === 'korean') {
+      list = list.filter(r => (r.origin || '').toLowerCase() === 'korean');
+    } else if (catLower === 'japanese') {
+      list = list.filter(r => (r.origin || '').toLowerCase() === 'japanese');
+    } else if (catLower === 'uploaded' || catLower === 'uploaded movies') {
+      list = list.filter(r => (r.availability || '').toLowerCase() === 'uploaded' && (r.content_type || '').toLowerCase() === 'movie');
+    } else if (catLower === 'uploaded web series') {
+      list = list.filter(r => (r.availability || '').toLowerCase() === 'uploaded' && (r.content_type || '').toLowerCase() === 'web series');
+    } else if (catLower === 'to watch') {
+      list = list.filter(r => r.status === 'plan_to_watch');
+    } else if (catLower === 'old collection') {
+      list = list.filter(r => (r.category || '').toLowerCase() === 'old collection' || (r.availability === 'Uploaded' && r.release_year && r.release_year < 2015));
+    } else {
+      list = list.filter(r => 
+        (r.category && r.category.toLowerCase() === catLower) ||
+        (r.content_type && r.content_type.toLowerCase() === catLower) ||
+        (r.origin && r.origin.toLowerCase() === catLower)
+      );
+    }
   }
+
+  // 3. Year Filters
   if (watchYear && watchYear !== 'all') {
     const wy = parseInt(watchYear, 10);
-    list = list.filter(r => r.watched_date && new Date(r.watched_date).getFullYear() === wy);
+    list = list.filter(r => {
+      if (!r.watched_date) return false;
+      const yr = parseInt(String(r.watched_date).slice(0, 4), 10);
+      return yr === wy;
+    });
   }
   if (releaseYear && releaseYear !== 'all') {
     const ry = parseInt(releaseYear, 10);
     list = list.filter(r => r.release_year === ry);
   }
+
+  // 4. Search Filter (Matches Title, Content Type, Origin, Availability, Genre, Platform, Year, Notes)
   if (search && search.trim()) {
     const q = search.trim().toLowerCase();
     list = list.filter(r =>
       (r.title && r.title.toLowerCase().includes(q)) ||
+      (r.content_type && r.content_type.toLowerCase().includes(q)) ||
+      (r.origin && r.origin.toLowerCase().includes(q)) ||
+      (r.availability && r.availability.toLowerCase().includes(q)) ||
+      (r.category && r.category.toLowerCase().includes(q)) ||
       (r.genre && r.genre.toLowerCase().includes(q)) ||
       (r.notes && r.notes.toLowerCase().includes(q)) ||
-      (r.platform && r.platform.toLowerCase().includes(q))
+      (r.platform && r.platform.toLowerCase().includes(q)) ||
+      (r.release_year && String(r.release_year).includes(q))
     );
   }
 
+  // 5. Sorting
   if (sort === 'created_at_asc') {
     list.sort((a, b) => (a.id || 0) - (b.id || 0));
   } else if (sort === 'rating_desc') {
@@ -202,23 +305,33 @@ async function getItems({ status, category, type, search, sort = 'watched_date_d
   } else if (sort === 'created_at_desc') {
     list.sort((a, b) => (b.id || 0) - (a.id || 0));
   } else if (sort === 'watched_date_asc') {
+    // Oldest Watched: Earliest watched date first; items without watched_date at the end
     list.sort((a, b) => {
       const aHas = Boolean(a.watched_date);
       const bHas = Boolean(b.watched_date);
       if (aHas && !bHas) return -1;
       if (!aHas && bHas) return 1;
-      if (!aHas && !bHas) return (a.id || 0) - (b.id || 0);
-      return new Date(a.watched_date) - new Date(b.watched_date) || (a.id || 0) - (b.id || 0);
+      if (aHas && bHas) {
+        const cmp = String(a.watched_date).localeCompare(String(b.watched_date));
+        if (cmp !== 0) return cmp;
+        return (a.id || 0) - (b.id || 0);
+      }
+      return (a.id || 0) - (b.id || 0);
     });
   } else {
-    // default watched_date_desc (Timeline: Recently Watched)
+    // default watched_date_desc: Strict Recent Watched by Chronological Watch Date (newest date first)
+    // Items with a watched date appear first; items without a watched date appear at the bottom
     list.sort((a, b) => {
       const aHas = Boolean(a.watched_date);
       const bHas = Boolean(b.watched_date);
       if (aHas && !bHas) return -1;
       if (!aHas && bHas) return 1;
-      if (!aHas && !bHas) return (b.id || 0) - (a.id || 0);
-      return new Date(b.watched_date) - new Date(a.watched_date) || (b.id || 0) - (a.id || 0);
+      if (aHas && bHas) {
+        const cmp = String(b.watched_date).localeCompare(String(a.watched_date));
+        if (cmp !== 0) return cmp;
+        return (b.id || 0) - (a.id || 0);
+      }
+      return (b.id || 0) - (a.id || 0);
     });
   }
 
@@ -229,7 +342,9 @@ async function getItems({ status, category, type, search, sort = 'watched_date_d
  * Get single title by ID
  */
 async function getItemById(id) {
+  if (id == null) return null;
   const numId = parseInt(id, 10);
+  if (isNaN(numId)) return null;
   if (_db.isConfigured()) {
     try {
       const rows = await _db.query('SELECT *, watched_date::text AS watched_date FROM titles WHERE id = $1;', [numId]);
@@ -242,20 +357,35 @@ async function getItemById(id) {
 }
 
 /**
- * Check if a title already exists (case-insensitive & trimmed)
+ * Check if a title already exists within the same content type (case-insensitive & trimmed)
+ * @param {string} title
+ * @param {string} contentType
+ * @param {number|string|null} excludeId
  */
-async function findDuplicate(title, excludeId = null) {
+async function findDuplicate(title, contentType = null, excludeId = null) {
   const cleanTitle = (title || '').trim().replace(/\s+/g, ' ').toLowerCase();
   if (!cleanTitle) return null;
+  const cleanType = (contentType || '').trim().replace(/\s+/g, ' ').toLowerCase();
 
   if (_db.isConfigured()) {
     try {
       let query = `SELECT * FROM titles WHERE LOWER(TRIM(title)) = $1`;
       const params = [cleanTitle];
-      if (excludeId != null) {
-        query += ` AND id != $2`;
-        params.push(parseInt(excludeId, 10));
+      let paramIndex = 2;
+
+      if (cleanType) {
+        query += ` AND LOWER(TRIM(content_type)) = $${paramIndex++}`;
+        params.push(cleanType);
       }
+
+      if (excludeId != null) {
+        const numExclude = parseInt(excludeId, 10);
+        if (!isNaN(numExclude)) {
+          query += ` AND id != $${paramIndex++}`;
+          params.push(numExclude);
+        }
+      }
+
       query += ` LIMIT 1;`;
       const rows = await _db.query(query, params);
       if (rows && rows.length > 0) {
@@ -269,9 +399,17 @@ async function findDuplicate(title, excludeId = null) {
   // Check in-memory cache / memory items
   const pool = _cachedLibrary || memoryItems;
   return pool.find(item => {
-    if (excludeId != null && item.id === parseInt(excludeId, 10)) return false;
+    if (excludeId != null) {
+      const numExclude = parseInt(excludeId, 10);
+      if (!isNaN(numExclude) && item.id === numExclude) return false;
+    }
     const itemTitle = (item.title || '').trim().replace(/\s+/g, ' ').toLowerCase();
-    return itemTitle === cleanTitle;
+    if (itemTitle !== cleanTitle) return false;
+    if (cleanType) {
+      const itemType = (item.content_type || item.type || item.category || '').trim().replace(/\s+/g, ' ').toLowerCase();
+      if (itemType !== cleanType) return false;
+    }
+    return true;
   }) || null;
 }
 
@@ -279,7 +417,10 @@ async function findDuplicate(title, excludeId = null) {
  * Create new title
  */
 async function createItem(data) {
-  const category = (data.category || data.type || 'Movie').trim();
+  const contentType = (data.content_type || data.type || 'Movie').trim();
+  const origin = (data.origin || 'Bollywood').trim();
+  const availability = (data.availability || 'Not Uploaded').trim();
+  const category = (data.category || contentType).trim();
   const status = (data.status || 'plan_to_watch').trim();
   const title = (data.title || '').trim();
   const genre = data.genre ? data.genre.trim() : null;
@@ -290,10 +431,10 @@ async function createItem(data) {
   const posterUrl = data.poster_url ? data.poster_url.trim() : null;
   const notes = data.notes ? data.notes.trim() : null;
 
-  // Prevent duplicate title (case-insensitive)
-  const duplicate = await findDuplicate(title);
+  // Prevent duplicate title within same content type
+  const duplicate = await findDuplicate(title, contentType);
   if (duplicate) {
-    const error = new Error(`"${title}" already exists in your collection (Category: ${duplicate.category || duplicate.type || 'Watchlist'}).`);
+    const error = new Error(`"${title}" already exists as a ${duplicate.content_type || 'title'} in your collection.`);
     error.code = 'DUPLICATE_TITLE';
     error.existingItem = duplicate;
     throw error;
@@ -302,10 +443,10 @@ async function createItem(data) {
   if (_db.isConfigured()) {
     try {
       const rows = await _db.query(
-        `INSERT INTO titles (title, category, status, genre, release_year, rating, watched_date, platform, poster_url, notes)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `INSERT INTO titles (title, content_type, origin, availability, category, status, genre, release_year, rating, watched_date, platform, poster_url, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          RETURNING *;`,
-        [title, category, status, genre, releaseYear, rating, watchedDate, platform, posterUrl, notes]
+        [title, contentType, origin, availability, category, status, genre, releaseYear, rating, watchedDate, platform, posterUrl, notes]
       );
       invalidateCache();
       return formatRow(rows[0]);
@@ -322,8 +463,11 @@ async function createItem(data) {
   const newRecord = {
     id: nextMemoryId++,
     title,
+    content_type: contentType,
+    origin,
+    availability,
     category,
-    type: category,
+    type: contentType,
     status,
     genre,
     release_year: releaseYear,
@@ -344,8 +488,13 @@ async function createItem(data) {
  * Update title
  */
 async function updateItem(id, data) {
+  if (id == null) return null;
   const numId = parseInt(id, 10);
-  const category = (data.category || data.type || 'Movie').trim();
+  if (isNaN(numId)) return null;
+  const contentType = (data.content_type || data.type || 'Movie').trim();
+  const origin = (data.origin || 'Bollywood').trim();
+  const availability = (data.availability || 'Not Uploaded').trim();
+  const category = (data.category || contentType).trim();
   const status = (data.status || 'plan_to_watch').trim();
   const title = (data.title || '').trim();
   const genre = data.genre ? data.genre.trim() : null;
@@ -357,9 +506,9 @@ async function updateItem(id, data) {
   const notes = data.notes ? data.notes.trim() : null;
 
   // Prevent duplicate title (case-insensitive, excluding self)
-  const duplicate = await findDuplicate(title, numId);
+  const duplicate = await findDuplicate(title, contentType, numId);
   if (duplicate) {
-    const error = new Error(`"${title}" already exists in your collection (Category: ${duplicate.category || duplicate.type || 'Watchlist'}).`);
+    const error = new Error(`"${title}" already exists as a ${duplicate.content_type || 'title'} in your collection.`);
     error.code = 'DUPLICATE_TITLE';
     error.existingItem = duplicate;
     throw error;
@@ -369,11 +518,12 @@ async function updateItem(id, data) {
     try {
       const rows = await _db.query(
         `UPDATE titles
-         SET title = $1, category = $2, status = $3, genre = $4, release_year = $5,
-             rating = $6, watched_date = $7, platform = $8, poster_url = $9, notes = $10, updated_at = CURRENT_TIMESTAMP
-         WHERE id = $11
+         SET title = $1, content_type = $2, origin = $3, availability = $4, category = $5,
+             status = $6, genre = $7, release_year = $8, rating = $9, watched_date = $10,
+             platform = $11, poster_url = $12, notes = $13, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $14
          RETURNING *;`,
-        [title, category, status, genre, releaseYear, rating, watchedDate, platform, posterUrl, notes, numId]
+        [title, contentType, origin, availability, category, status, genre, releaseYear, rating, watchedDate, platform, posterUrl, notes, numId]
       );
       invalidateCache();
       return rows.length > 0 ? formatRow(rows[0]) : null;
@@ -387,8 +537,11 @@ async function updateItem(id, data) {
   memoryItems[idx] = {
     ...memoryItems[idx],
     title,
+    content_type: contentType,
+    origin,
+    availability,
     category,
-    type: category,
+    type: contentType,
     status,
     genre,
     release_year: releaseYear,
@@ -407,13 +560,28 @@ async function updateItem(id, data) {
  * Quick update status
  */
 async function updateStatus(id, newStatus) {
+  if (id == null) return null;
   const numId = parseInt(id, 10);
+  if (isNaN(numId)) return null;
+
   if (_db.isConfigured()) {
     try {
-      const rows = await _db.query(
-        `UPDATE titles SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *;`,
-        [newStatus, numId]
-      );
+      let query;
+      if (newStatus === 'completed') {
+        query = `UPDATE titles 
+                 SET status = $1, 
+                     watched_date = COALESCE(watched_date, CURRENT_DATE), 
+                     updated_at = CURRENT_TIMESTAMP 
+                 WHERE id = $2 
+                 RETURNING *;`;
+      } else {
+        query = `UPDATE titles 
+                 SET status = $1, 
+                     updated_at = CURRENT_TIMESTAMP 
+                 WHERE id = $2 
+                 RETURNING *;`;
+      }
+      const rows = await _db.query(query, [newStatus, numId]);
       invalidateCache();
       return rows.length > 0 ? formatRow(rows[0]) : null;
     } catch (err) {
@@ -424,6 +592,9 @@ async function updateStatus(id, newStatus) {
   const item = memoryItems.find(r => r.id === numId);
   if (!item) return null;
   item.status = newStatus;
+  if (newStatus === 'completed' && !item.watched_date) {
+    item.watched_date = new Date().toISOString().slice(0, 10);
+  }
   item.updated_at = new Date().toISOString();
   invalidateCache();
   return item;
@@ -433,7 +604,10 @@ async function updateStatus(id, newStatus) {
  * Delete title
  */
 async function deleteItem(id) {
+  if (id == null) return false;
   const numId = parseInt(id, 10);
+  if (isNaN(numId)) return false;
+
   if (_db.isConfigured()) {
     try {
       const rows = await _db.query(`DELETE FROM titles WHERE id = $1 RETURNING id;`, [numId]);
@@ -451,92 +625,145 @@ async function deleteItem(id) {
 }
 
 /**
- * Bulk update watch status for multiple titles
- * @param {Array<number>} ids
- * @param {string} newStatus
+ * Bulk update status
  */
 async function bulkUpdateStatus(ids, newStatus) {
-  if (!Array.isArray(ids) || ids.length === 0 || !newStatus) return [];
-  const cleanIds = ids.map(id => parseInt(id, 10)).filter(n => !isNaN(n));
-  if (cleanIds.length === 0) return [];
+  if (!Array.isArray(ids) || ids.length === 0) return 0;
+  const numIds = ids.map(id => parseInt(id, 10)).filter(Boolean);
+  if (numIds.length === 0) return 0;
 
   if (_db.isConfigured()) {
     try {
-      const placeholders = cleanIds.map((_, i) => '$' + (i + 2)).join(', ');
-      const sqlText = `UPDATE titles SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders}) RETURNING *;`;
-      const rows = await _db.query(sqlText, [newStatus, ...cleanIds]);
+      let query;
+      if (newStatus === 'completed') {
+        query = `UPDATE titles 
+                 SET status = $1, 
+                     watched_date = COALESCE(watched_date, CURRENT_DATE), 
+                     updated_at = CURRENT_TIMESTAMP 
+                 WHERE id = ANY($2::int[]) 
+                 RETURNING id;`;
+      } else {
+        query = `UPDATE titles 
+                 SET status = $1, 
+                     updated_at = CURRENT_TIMESTAMP 
+                 WHERE id = ANY($2::int[]) 
+                 RETURNING id;`;
+      }
+      const rows = await _db.query(query, [newStatus, numIds]);
       invalidateCache();
-      return rows.map(formatRow);
+      return rows.length;
     } catch (err) {
       console.warn('[Neon bulkUpdateStatus error]:', err.message);
     }
   }
 
-  // Fallback
-  const idSet = new Set(cleanIds);
-  const updated = [];
-  for (const item of memoryItems) {
-    if (idSet.has(item.id)) {
-      item.status = newStatus;
-      item.updated_at = new Date().toISOString();
-      updated.push(item);
+  let count = 0;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  memoryItems.forEach(i => {
+    if (numIds.includes(i.id)) {
+      i.status = newStatus;
+      if (newStatus === 'completed' && !i.watched_date) {
+        i.watched_date = todayStr;
+      }
+      i.updated_at = new Date().toISOString();
+      count++;
     }
-  }
+  });
   invalidateCache();
-  return updated;
+  return count;
 }
 
 /**
- * Bulk update category for multiple titles
- * @param {Array<number>} ids
- * @param {string} newCategory
+ * Bulk update category and synchronize 4 dimensions
  */
 async function bulkUpdateCategory(ids, newCategory) {
-  if (!Array.isArray(ids) || ids.length === 0 || !newCategory) return [];
-  const cleanIds = ids.map(id => parseInt(id, 10)).filter(n => !isNaN(n));
-  if (cleanIds.length === 0) return [];
+  if (!Array.isArray(ids) || ids.length === 0) return 0;
+  const numIds = ids.map(id => parseInt(id, 10)).filter(Boolean);
+
+  const catLower = (newCategory || '').trim().toLowerCase();
+  let contentType = null;
+  let origin = null;
+  let availability = null;
+  let status = null;
+
+  if (catLower === 'movies' || catLower === 'movie') {
+    contentType = 'Movie';
+  } else if (catLower === 'web series' || catLower === 'webseries') {
+    contentType = 'Web Series';
+  } else if (catLower === 'anime') {
+    origin = 'Anime';
+  } else if (catLower === 'documentary') {
+    contentType = 'Documentary';
+  } else if (catLower === 'bollywood') {
+    contentType = 'Movie';
+    origin = 'Bollywood';
+  } else if (catLower === 'hollywood') {
+    contentType = 'Movie';
+    origin = 'Hollywood';
+  } else if (catLower === 'south' || catLower === 'south indian') {
+    contentType = 'Movie';
+    origin = 'South Indian';
+  } else if (catLower === 'uploaded movies') {
+    contentType = 'Movie';
+    availability = 'Uploaded';
+  } else if (catLower === 'uploaded web series') {
+    contentType = 'Web Series';
+    availability = 'Uploaded';
+  } else if (catLower === 'to watch') {
+    status = 'plan_to_watch';
+  }
 
   if (_db.isConfigured()) {
     try {
-      const placeholders = cleanIds.map((_, i) => '$' + (i + 2)).join(', ');
-      const sqlText = `UPDATE titles SET category = $1, updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders}) RETURNING *;`;
-      const rows = await _db.query(sqlText, [newCategory, ...cleanIds]);
+      const rows = await _db.query(
+        `UPDATE titles 
+         SET category = $1,
+             content_type = COALESCE($2, content_type),
+             origin = COALESCE($3, origin),
+             availability = COALESCE($4, availability),
+             status = COALESCE($5, status),
+             updated_at = CURRENT_TIMESTAMP 
+         WHERE id = ANY($6::int[]) 
+         RETURNING id;`,
+        [newCategory, contentType, origin, availability, status, numIds]
+      );
       invalidateCache();
-      return rows.map(formatRow);
+      return rows.length;
     } catch (err) {
       console.warn('[Neon bulkUpdateCategory error]:', err.message);
     }
   }
 
-  // Fallback
-  const idSet = new Set(cleanIds);
-  const updated = [];
-  for (const item of memoryItems) {
-    if (idSet.has(item.id)) {
-      item.category = newCategory;
-      item.type = newCategory;
-      item.updated_at = new Date().toISOString();
-      updated.push(item);
+  let count = 0;
+  memoryItems.forEach(i => {
+    if (numIds.includes(i.id)) {
+      i.category = newCategory;
+      if (contentType) i.content_type = contentType;
+      if (origin) i.origin = origin;
+      if (availability) i.availability = availability;
+      if (status) i.status = status;
+      i.type = i.content_type || newCategory;
+      i.updated_at = new Date().toISOString();
+      count++;
     }
-  }
+  });
   invalidateCache();
-  return updated;
+  return count;
 }
 
 /**
- * Bulk delete multiple titles
- * @param {Array<number>} ids
+ * Bulk delete titles
  */
 async function bulkDelete(ids) {
   if (!Array.isArray(ids) || ids.length === 0) return 0;
-  const cleanIds = ids.map(id => parseInt(id, 10)).filter(n => !isNaN(n));
-  if (cleanIds.length === 0) return 0;
+  const numIds = ids.map(id => parseInt(id, 10)).filter(Boolean);
 
   if (_db.isConfigured()) {
     try {
-      const placeholders = cleanIds.map((_, i) => '$' + (i + 1)).join(', ');
-      const sqlText = `DELETE FROM titles WHERE id IN (${placeholders}) RETURNING id;`;
-      const rows = await _db.query(sqlText, cleanIds);
+      const rows = await _db.query(
+        `DELETE FROM titles WHERE id = ANY($1::int[]) RETURNING id;`,
+        [numIds]
+      );
       invalidateCache();
       return rows.length;
     } catch (err) {
@@ -544,26 +771,21 @@ async function bulkDelete(ids) {
     }
   }
 
-  // Fallback
-  const idSet = new Set(cleanIds);
   const prevLen = memoryItems.length;
-  memoryItems = memoryItems.filter(r => !idSet.has(r.id));
+  memoryItems = memoryItems.filter(i => !numIds.includes(i.id));
   invalidateCache();
   return prevLen - memoryItems.length;
 }
 
 /**
- * Aggregate stats
- */
-/**
- * Aggregate stats (Instantaneous in-memory lookup)
+ * Aggregate summary statistics
  */
 async function getStats() {
   const all = await getFullLibrary();
   const total = all.length;
   const watching = all.filter(i => i.status === 'watching').length;
   const completed = all.filter(i => i.status === 'completed').length;
-  const planToWatch = all.filter(i => i.status === 'plan_to_watch').length;
+  const planToWatch = all.filter(i => i.status === 'plan_to_watch' || i.status === 'to_watch').length;
 
   const ratedItems = all.filter(i => i.rating && Number(i.rating) > 0);
   const avgRating = ratedItems.length > 0
@@ -580,14 +802,35 @@ async function getStats() {
 }
 
 /**
- * Dynamic filter options for timeline watch years and release years (Instantaneous in-memory lookup)
+ * Dynamic filter options for 4 dimensions, watch years, release years, and views
  */
 async function getFilterOptions() {
   const all = await getFullLibrary();
-  const wYears = Array.from(new Set(all.map(i => i.watched_date ? new Date(i.watched_date).getFullYear() : null).filter(Boolean))).sort((a,b) => b-a);
+  const wYears = Array.from(new Set(all.map(i => i.watched_date ? parseInt(String(i.watched_date).slice(0, 4), 10) : null).filter(Boolean))).sort((a,b) => b-a);
   const rYears = Array.from(new Set(all.map(i => i.release_year).filter(Boolean))).sort((a,b) => b-a);
-  const cats = Array.from(new Set(all.map(i => i.category).filter(Boolean))).sort();
-  return { watchYears: wYears, releaseYears: rYears, categories: cats };
+
+  return {
+    contentTypes: ['Movie', 'Web Series', 'Documentary'],
+    origins: ['Bollywood', 'Hollywood', 'Anime', 'South Indian', 'Korean', 'Japanese', 'Other'],
+    availabilities: ['Uploaded', 'Not Uploaded'],
+    statuses: ['completed', 'watching', 'plan_to_watch', 'dropped'],
+    watchYears: wYears,
+    releaseYears: rYears,
+    categories: [
+      'All Categories',
+      'Movies',
+      'Bollywood',
+      'Hollywood',
+      'Web series',
+      'Anime',
+      'South',
+      'Documentary',
+      'To Watch',
+      'Old Collection',
+      'Uploaded Movies',
+      'Uploaded Web series'
+    ]
+  };
 }
 
 module.exports = {
@@ -595,6 +838,7 @@ module.exports = {
   healthCheck,
   getItems,
   getItemById,
+  findDuplicate,
   createItem,
   updateItem,
   updateStatus,

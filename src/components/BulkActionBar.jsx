@@ -87,11 +87,13 @@ export default function BulkActionBar({
               aria-label="Bulk change category"
             >
               <option value="" disabled>Category...</option>
+              <option value="Movies">Movies</option>
               <option value="Bollywood">Bollywood</option>
               <option value="Hollywood">Hollywood</option>
               <option value="Web series">Web series</option>
               <option value="Anime">Anime</option>
               <option value="South">South</option>
+              <option value="Documentary">Documentary</option>
               <option value="To Watch">To Watch</option>
               <option value="Old Collection">Old Collection</option>
               <option value="Uploaded Movies">Uploaded Movies</option>

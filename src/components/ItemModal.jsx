@@ -1,10 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import FacebookDatePicker from './FacebookDatePicker';
 
-export default function ItemModal({ isOpen, onClose, onSave, item, existingItems = [] }) {
+const CONTENT_TYPES = [
+  { value: 'Movie', label: 'Movies' },
+  { value: 'Web Series', label: 'Web Series' },
+  { value: 'Documentary', label: 'Documentary' }
+];
+
+const ORIGINS = [
+  { value: 'Bollywood', label: 'Bollywood' },
+  { value: 'Hollywood', label: 'Hollywood' },
+  { value: 'Anime', label: 'Anime' },
+  { value: 'South Indian', label: 'South Indian' },
+  { value: 'Korean', label: 'Korean' },
+  { value: 'Japanese', label: 'Japanese' },
+  { value: 'Other', label: 'Other' }
+];
+
+const AVAILABILITY_OPTIONS = [
+  { value: 'Uploaded', label: 'Uploaded' },
+  { value: 'Not Uploaded', label: 'Not Uploaded' }
+];
+
+const STATUS_OPTIONS = [
+  { value: 'completed', label: 'Completed' },
+  { value: 'watching', label: 'Watching' },
+  { value: 'plan_to_watch', label: 'To Watch' },
+  { value: 'dropped', label: 'Dropped' }
+];
+
+export default function ItemModal({
+  isOpen,
+  onClose,
+  onSave,
+  item,
+  existingItems = [],
+  defaultCategory = 'Bollywood'
+}) {
   const [formData, setFormData] = useState({
     title: '',
-    type: 'Bollywood',
+    content_type: 'Movie',
+    origin: 'Bollywood',
+    availability: 'Not Uploaded',
     status: 'plan_to_watch',
     genre: '',
     release_year: '',
@@ -17,29 +54,68 @@ export default function ItemModal({ isOpen, onClose, onSave, item, existingItems
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateMatch, setDuplicateMatch] = useState(null);
 
-  // Check in real-time for duplicates as user types (case-insensitive & trimmed)
+  // Synchronous and debounced asynchronous duplicate check (by Title + Content Type)
   useEffect(() => {
-    const clean = (formData.title || '').trim().replace(/\s+/g, ' ').toLowerCase();
-    if (!clean || clean.length < 2) {
+    const cleanTitle = (formData.title || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const currentType = (formData.content_type || 'Movie').trim().toLowerCase();
+
+    if (!cleanTitle || cleanTitle.length < 2) {
       setDuplicateMatch(null);
       return;
     }
 
     const currentId = item?.id;
-    const match = existingItems.find((ex) => {
+
+    // 1. Instant Synchronous Check against loaded items
+    const localMatch = existingItems.find((ex) => {
       if (currentId != null && ex.id === currentId) return false;
-      const exClean = (ex.title || '').trim().replace(/\s+/g, ' ').toLowerCase();
-      return exClean === clean;
+      const exTitle = (ex.title || '').trim().replace(/\s+/g, ' ').toLowerCase();
+      const exType = (ex.content_type || ex.type || 'Movie').trim().toLowerCase();
+      return exTitle === cleanTitle && exType === currentType;
     });
 
-    setDuplicateMatch(match || null);
-  }, [formData.title, item, existingItems]);
+    if (localMatch) {
+      setDuplicateMatch(localMatch);
+      return;
+    }
+
+    // 2. Debounced asynchronous check against server
+    let isCancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          title: cleanTitle,
+          content_type: formData.content_type
+        });
+        if (currentId != null) params.append('excludeId', currentId);
+
+        const res = await fetch(`/api/items/check-duplicate?${params.toString()}`);
+        if (res.ok && !isCancelled) {
+          const data = await res.json();
+          if (data.isDuplicate && data.match) {
+            setDuplicateMatch(data.match);
+          } else {
+            setDuplicateMatch(null);
+          }
+        }
+      } catch (err) {
+        // Silently ignore network check errors
+      }
+    }, 200);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [formData.title, formData.content_type, item, existingItems]);
 
   useEffect(() => {
     if (item) {
       setFormData({
         title: item.title || '',
-        type: item.type || item.category || 'Bollywood',
+        content_type: item.content_type || item.type || 'Movie',
+        origin: item.origin || 'Bollywood',
+        availability: item.availability || 'Not Uploaded',
         status: item.status || 'plan_to_watch',
         genre: item.genre || '',
         release_year: item.release_year || '',
@@ -50,20 +126,42 @@ export default function ItemModal({ isOpen, onClose, onSave, item, existingItems
         notes: item.notes || ''
       });
     } else {
+      // Inferred defaults from current active view
+      let initialType = 'Movie';
+      let initialOrigin = 'Bollywood';
+      let initialAvailability = 'Not Uploaded';
+
+      if (defaultCategory === 'Web series' || defaultCategory === 'Uploaded Web series') {
+        initialType = 'Web Series';
+      } else if (defaultCategory === 'Anime') {
+        initialType = 'Web Series';
+        initialOrigin = 'Anime';
+      } else if (defaultCategory === 'Hollywood') {
+        initialOrigin = 'Hollywood';
+      } else if (defaultCategory === 'South') {
+        initialOrigin = 'South Indian';
+      }
+
+      if (defaultCategory === 'Uploaded Movies' || defaultCategory === 'Uploaded Web series') {
+        initialAvailability = 'Uploaded';
+      }
+
       setFormData({
         title: '',
-        type: 'Bollywood',
-        status: 'plan_to_watch',
+        content_type: initialType,
+        origin: initialOrigin,
+        availability: initialAvailability,
+        status: defaultCategory === 'To Watch' ? 'plan_to_watch' : 'completed',
         genre: '',
         release_year: new Date().getFullYear(),
         rating: 8,
-        watched_date: '',
+        watched_date: defaultCategory === 'To Watch' ? '' : new Date().toISOString().slice(0, 10),
         platform: '',
         poster_url: '',
         notes: ''
       });
     }
-  }, [item, isOpen]);
+  }, [item, isOpen, defaultCategory]);
 
   if (!isOpen) return null;
 
@@ -74,13 +172,34 @@ export default function ItemModal({ isOpen, onClose, onSave, item, existingItems
 
     setIsSubmitting(true);
     try {
-      await onSave({
+      let computedCategory = formData.origin;
+      if (formData.origin === 'Anime') {
+        computedCategory = 'Anime';
+      } else if (formData.content_type === 'Web Series' && formData.origin !== 'Anime') {
+        computedCategory = 'Web series';
+      } else if (formData.origin === 'South Indian') {
+        computedCategory = 'South';
+      } else if (formData.origin === 'Bollywood') {
+        computedCategory = 'Bollywood';
+      } else if (formData.origin === 'Hollywood') {
+        computedCategory = 'Hollywood';
+      } else {
+        computedCategory = formData.content_type || 'Movie';
+      }
+
+      const payload = {
         ...formData,
         title: cleanTitle,
+        category: computedCategory,
+        type: formData.content_type,
         release_year: formData.release_year ? parseInt(formData.release_year, 10) : null,
-        rating: parseFloat(formData.rating),
-        watched_date: formData.watched_date || null
-      });
+        rating: isNaN(parseFloat(formData.rating)) ? 0.0 : parseFloat(formData.rating),
+        watched_date:
+          formData.status === 'completed' && !formData.watched_date
+            ? new Date().toISOString().slice(0, 10)
+            : formData.watched_date || null
+      };
+      await onSave(payload);
     } finally {
       setIsSubmitting(false);
     }
@@ -113,7 +232,7 @@ export default function ItemModal({ isOpen, onClose, onSave, item, existingItems
           <div className="modal-header-text">
             <h3>{item ? 'Edit Watchlist Item' : 'Add Title to Watchlist'}</h3>
             <span className="modal-header-sub">
-              {item ? 'Update cinema metadata & rating' : 'Add to your personal cinema universe'}
+              {item ? 'Update cinema metadata & rating across 4 dimensions' : 'Add to your personal cinema universe across 4 dimensions'}
             </span>
           </div>
           <button className="modal-close-btn" onClick={onClose} aria-label="Close modal">
@@ -123,6 +242,7 @@ export default function ItemModal({ isOpen, onClose, onSave, item, existingItems
 
         <form onSubmit={handleSubmit} className="modal-form-shell">
           <div className="modal-body">
+            {/* Title Input */}
             <div className="form-row">
               <div className="form-group full-width">
                 <label htmlFor="inputTitle">
@@ -134,7 +254,7 @@ export default function ItemModal({ isOpen, onClose, onSave, item, existingItems
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="e.g. Interstellar, Severance, Arcane"
+                  placeholder="e.g. 12th Fail, Interstellar, Legend of Hanuman"
                   className={duplicateMatch ? 'input-duplicate-error' : ''}
                   autoFocus
                 />
@@ -142,48 +262,104 @@ export default function ItemModal({ isOpen, onClose, onSave, item, existingItems
                   <div className="duplicate-warning-banner" role="alert">
                     <span className="duplicate-warning-icon">⚠️</span>
                     <div className="duplicate-warning-text">
-                      <strong>Duplicate title:</strong> "{duplicateMatch.title}" already exists in your collection ({duplicateMatch.category || duplicateMatch.type} • {duplicateMatch.status === 'completed' ? 'Watched' : duplicateMatch.status === 'watching' ? 'Watching' : 'Plan to Watch'}). Titles must be unique.
+                      <strong>Duplicate {duplicateMatch.content_type || 'title'}:</strong> "{duplicateMatch.title}" already exists as a {duplicateMatch.content_type || 'Movie'} ({duplicateMatch.origin || 'Bollywood'} • {duplicateMatch.status === 'completed' ? 'Watched' : duplicateMatch.status === 'watching' ? 'Watching' : 'Plan to Watch'}). Titles must be unique within the same content type.
                     </div>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="form-row two-col">
-              <div className="form-group">
-                <label htmlFor="inputType">Category</label>
-                <select
-                  id="inputType"
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                >
-                  <option value="Bollywood">Bollywood</option>
-                  <option value="Hollywood">Hollywood</option>
-                  <option value="Web series">Web series</option>
-                  <option value="Anime">Anime</option>
-                  <option value="South">South</option>
-                  <option value="To Watch">To Watch</option>
-                  <option value="Old Collection">Old Collection</option>
-                  <option value="Uploaded Movies">Uploaded Movies</option>
-                  <option value="Uploaded Web series">Uploaded Web series</option>
-                </select>
+            {/* 4-DIMENSION ARCHITECTURE CARD */}
+            <div className="four-dimensions-panel">
+              {/* Dimension 1: Content Type */}
+              <div className="dimension-row">
+                <div className="dimension-header">
+                  <span className="dimension-title">Dimension 1 — Content Type</span>
+                  <span className="dimension-question">What kind of content is it?</span>
+                </div>
+                <div className="dimension-pill-group">
+                  {CONTENT_TYPES.map((ct) => (
+                    <button
+                      key={ct.value}
+                      type="button"
+                      className={`dimension-pill-btn ${formData.content_type === ct.value ? 'active-pill blue' : ''}`}
+                      onClick={() => setFormData((prev) => ({ ...prev, content_type: ct.value }))}
+                    >
+                      {ct.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="inputStatus">Watch Status</label>
-                <select
-                  id="inputStatus"
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                >
-                  <option value="plan_to_watch">Plan to Watch</option>
-                  <option value="completed">Watched</option>
-                  <option value="watching">Currently Watching</option>
-                  <option value="dropped">Dropped</option>
-                </select>
+              {/* Dimension 2: Industry / Origin */}
+              <div className="dimension-row">
+                <div className="dimension-header">
+                  <span className="dimension-title">Dimension 2 — Industry / Origin</span>
+                  <span className="dimension-question">Where does the content originate?</span>
+                </div>
+                <div className="dimension-pill-group">
+                  {ORIGINS.map((og) => (
+                    <button
+                      key={og.value}
+                      type="button"
+                      className={`dimension-pill-btn ${formData.origin === og.value ? 'active-pill purple' : ''}`}
+                      onClick={() => setFormData((prev) => ({ ...prev, origin: og.value }))}
+                    >
+                      {og.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dimension 3: Availability */}
+              <div className="dimension-row">
+                <div className="dimension-header">
+                  <span className="dimension-title">Dimension 3 — Availability</span>
+                  <span className="dimension-question">Is the content available in your uploaded library?</span>
+                </div>
+                <div className="dimension-pill-group">
+                  {AVAILABILITY_OPTIONS.map((av) => (
+                    <button
+                      key={av.value}
+                      type="button"
+                      className={`dimension-pill-btn ${formData.availability === av.value ? (av.value === 'Uploaded' ? 'active-pill green' : 'active-pill orange') : ''}`}
+                      onClick={() => setFormData((prev) => ({ ...prev, availability: av.value }))}
+                    >
+                      {av.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dimension 4: Watch Status */}
+              <div className="dimension-row">
+                <div className="dimension-header">
+                  <span className="dimension-title">Dimension 4 — Watch Status</span>
+                  <span className="dimension-question">What is your personal viewing progress?</span>
+                </div>
+                <div className="dimension-pill-group">
+                  {STATUS_OPTIONS.map((st) => (
+                    <button
+                      key={st.value}
+                      type="button"
+                      className={`dimension-pill-btn ${formData.status === st.value ? (st.value === 'completed' ? 'active-pill green' : st.value === 'watching' ? 'active-pill blue' : st.value === 'plan_to_watch' ? 'active-pill orange' : 'active-pill red') : ''}`}
+                      onClick={() => {
+                        const newStatus = st.value;
+                        setFormData((prev) => ({
+                          ...prev,
+                          status: newStatus,
+                          watched_date: newStatus === 'completed' && !prev.watched_date ? new Date().toISOString().slice(0, 10) : prev.watched_date
+                        }));
+                      }}
+                    >
+                      {st.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
+            {/* Release Year & Watched Date */}
             <div className="form-row two-col">
               <div className="form-group">
                 <label htmlFor="inputYear">Release Year</label>
@@ -209,6 +385,7 @@ export default function ItemModal({ isOpen, onClose, onSave, item, existingItems
               </div>
             </div>
 
+            {/* Genre & Platform */}
             <div className="form-row two-col">
               <div className="form-group">
                 <label htmlFor="inputGenre">Genre</label>
@@ -217,7 +394,7 @@ export default function ItemModal({ isOpen, onClose, onSave, item, existingItems
                   type="text"
                   value={formData.genre}
                   onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
-                  placeholder="Sci-Fi, Drama, Mystery"
+                  placeholder="Drama, Biopic, Sci-Fi"
                 />
               </div>
 
@@ -228,22 +405,27 @@ export default function ItemModal({ isOpen, onClose, onSave, item, existingItems
                   type="text"
                   value={formData.platform}
                   onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
-                  placeholder="Netflix, HBO, Cinema"
+                  placeholder="Disney+ Hotstar, Netflix, Cinema"
                 />
               </div>
             </div>
 
+            {/* Rating */}
             <div className="form-row">
               <div className="form-group full-width">
                 <div className="rating-slider-header">
                   <label htmlFor="inputRating">Rating</label>
                   <div className="rating-visual-pill">
-                    <span className="rating-score-val">{formData.rating}</span>
-                    <span className="rating-score-denom">/ 10</span>
-                    <span className="rating-star-glyphs">{getStars(formData.rating)}</span>
+                    <span className="rating-visual-score">
+                      ★ {Number(formData.rating).toFixed(1)}
+                    </span>
+                    <span className="rating-visual-stars">
+                      {getStars(Number(formData.rating))}
+                    </span>
                   </div>
                 </div>
-                <div className="rating-slider-wrap">
+                <div className="rating-slider-row">
+                  <span className="rating-min-label">0</span>
                   <input
                     id="inputRating"
                     type="range"
@@ -251,58 +433,62 @@ export default function ItemModal({ isOpen, onClose, onSave, item, existingItems
                     max="10"
                     step="0.5"
                     value={formData.rating}
-                    onChange={(e) =>
-                      setFormData({ ...formData, rating: parseFloat(e.target.value) })
-                    }
-                    className="luxury-range-input"
+                    onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
+                    className="rating-range-slider"
                   />
+                  <span className="rating-max-label">10</span>
                 </div>
               </div>
             </div>
 
+            {/* Poster URL */}
             <div className="form-row">
               <div className="form-group full-width">
-                <label htmlFor="inputPoster">Poster / Image URL</label>
+                <label htmlFor="inputPoster">Poster Image URL (Optional)</label>
                 <input
                   id="inputPoster"
                   type="url"
                   value={formData.poster_url}
                   onChange={(e) => setFormData({ ...formData, poster_url: e.target.value })}
-                  placeholder="https://image.tmdb.org/... or leave empty for auto backdrop"
+                  placeholder="https://images.unsplash.com/photo-..."
                 />
-                <span className="field-hint">Optional: paste an image URL or leave empty for auto backdrop.</span>
               </div>
             </div>
 
+            {/* Notes */}
             <div className="form-row">
               <div className="form-group full-width">
-                <label htmlFor="inputNotes">Notes & Personal Review</label>
+                <label htmlFor="inputNotes">Personal Notes / Review</label>
                 <textarea
                   id="inputNotes"
-                  rows="2"
+                  rows="3"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Thoughts, review, or why you want to watch this..."
+                  placeholder="Inspiring journey, incredible performance, memorable soundtrack..."
                 />
               </div>
             </div>
           </div>
 
-          {/* Sticky Persistent Footer - Always visible and tappable */}
-          <div className="modal-footer sticky-modal-footer">
-            <button type="button" className="btn btn-secondary btn-modal-action btn-modal-cancel" onClick={onClose}>
+          <div className="modal-footer">
+            <button
+              type="button"
+              className="btn btn-ghost btn-modal-action"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Cancel
             </button>
             <button
               type="submit"
               className={`btn btn-primary btn-modal-action btn-modal-submit ${duplicateMatch ? 'btn-disabled-duplicate' : ''}`}
               disabled={isSubmitting || Boolean(duplicateMatch)}
-              title={duplicateMatch ? 'Cannot save duplicate title' : ''}
+              title={duplicateMatch ? `Cannot save: "${formData.title}" already exists as a ${formData.content_type}` : ''}
             >
               {isSubmitting
                 ? 'Saving...'
                 : duplicateMatch
-                ? 'Duplicate Title'
+                ? `Duplicate ${formData.content_type}`
                 : item
                 ? 'Update Title'
                 : 'Save Title'}

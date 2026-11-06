@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Search, Bell, Moon, Sun, Plus, FileSpreadsheet, Info, Play, Sparkles } from 'lucide-react';
+import { Search, Bell, Moon, Sun, Plus, FileSpreadsheet } from 'lucide-react';
 
 function BrandNeonEmblem() {
   return (

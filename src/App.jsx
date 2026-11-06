@@ -218,6 +218,13 @@ export default function App() {
       );
       setIsItemModalOpen(false);
       setEditingItem(null);
+
+      // If newly added, clear search and ensure the title is immediately in view
+      if (!isEditing) {
+        setSearch('');
+        setDisplayLimit(36);
+      }
+
       fetchItems();
       fetchStats();
       fetchFilterOptions();
@@ -571,6 +578,7 @@ export default function App() {
         onSave={handleSaveItem}
         item={editingItem}
         existingItems={items}
+        defaultCategory={categoryFilter !== 'all' ? categoryFilter : 'Bollywood'}
       />
 
       <DetailModal

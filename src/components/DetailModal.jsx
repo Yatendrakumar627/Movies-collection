@@ -116,9 +116,14 @@ export default function DetailModal({
 
           {/* Top Bar: Category Pill & Close Button */}
           <div className="detail-top-floating-bar">
-            <span className="detail-category-pill">
-              {item.category || item.type || 'Cinema'}
-            </span>
+            <div className="detail-top-left-group">
+              <span className="detail-category-pill">
+                {(item.content_type || item.category || 'Movie').toUpperCase()} • {(item.origin || 'BOLLYWOOD').toUpperCase()}
+              </span>
+              {item.availability === 'Uploaded' && (
+                <span className="detail-uploaded-pill">UPLOADED</span>
+              )}
+            </div>
             <button
               type="button"
               className="circle-glass-btn detail-close-circle"
@@ -233,17 +238,19 @@ export default function DetailModal({
               </div>
             </div>
 
-            {/* 4. Category & Type */}
+            {/* 4. Category & 4 Dimensions */}
             <div className="detail-metric-card">
               <div className="metric-icon-wrap pink">
                 <Film size={15} />
               </div>
               <div className="metric-content">
-                <span className="metric-label">Category</span>
+                <span className="metric-label">Dimensions</span>
                 <span className="metric-val-text">
-                  {item.category || item.type || 'Cinema'}
+                  {item.content_type || 'Movie'} · {item.origin || 'Bollywood'}
                 </span>
-                <span className="metric-sub-hint">Journal Collection</span>
+                <span className="metric-sub-hint">
+                  {item.availability === 'Uploaded' ? 'In Uploaded Library' : 'Not Uploaded'}
+                </span>
               </div>
             </div>
           </div>
@@ -302,8 +309,8 @@ export default function DetailModal({
             type="button"
             className="btn btn-primary detail-btn-edit-main"
             onClick={() => {
-              onClose();
-              onEdit(item);
+              if (onClose) onClose();
+              if (onEdit) onEdit(item);
             }}
             title="Edit all fields of this title"
           >
@@ -318,8 +325,8 @@ export default function DetailModal({
               className="btn btn-secondary detail-btn-sub-action"
               onClick={() => {
                 const next = item.status === 'completed' ? 'plan_to_watch' : 'completed';
-                onStatusChange(item.id, next);
-                onClose();
+                if (onStatusChange) onStatusChange(item.id, next);
+                if (onClose) onClose();
               }}
               title={item.status === 'completed' ? 'Move to Plan to Watch' : 'Mark as Watched'}
             >
@@ -331,8 +338,8 @@ export default function DetailModal({
               type="button"
               className="btn btn-secondary detail-btn-delete-action"
               onClick={() => {
-                onDelete(item.id, item.title);
-                onClose();
+                if (onDelete) onDelete(item.id, item.title);
+                if (onClose) onClose();
               }}
               title="Delete title"
             >

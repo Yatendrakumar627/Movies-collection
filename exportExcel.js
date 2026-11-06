@@ -89,7 +89,22 @@ async function buildExcelWorkbook(items) {
   const extraCategories = [];
 
   for (const item of items) {
-    const rawCat = (item.category || 'Bollywood').trim();
+    let rawCat = (item.category || '').trim();
+    const catLower = rawCat.toLowerCase();
+
+    // Normalize category labels to target spreadsheet column headers
+    if (!rawCat || catLower === 'movie' || catLower === 'movies' || catLower === 'cinema') {
+      if ((item.origin || '').toLowerCase() === 'anime') rawCat = 'Anime';
+      else if ((item.origin || '').toLowerCase() === 'hollywood') rawCat = 'Hollywood';
+      else if ((item.origin || '').toLowerCase().includes('south')) rawCat = 'South';
+      else rawCat = 'Bollywood';
+    } else if (catLower === 'web series' || catLower === 'webseries' || catLower === 'series') {
+      if ((item.origin || '').toLowerCase() === 'anime') rawCat = 'Anime';
+      else rawCat = 'Web series';
+    } else if (catLower === 'south indian') {
+      rawCat = 'South';
+    }
+
     const key = rawCat.toLowerCase();
     if (itemsByCategory[key]) {
       itemsByCategory[key].push(item);
