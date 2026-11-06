@@ -1,0 +1,129 @@
+[
+  {
+    "title": "Interstellar",
+    "category": "Movie",
+    "status": "completed",
+    "genre": "Sci-Fi, Adventure, Drama",
+    "release_year": 2014,
+    "rating": 9.4,
+    "watched_date": "2024-01-15",
+    "platform": "Paramount+",
+    "poster_url": "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=600&q=80",
+    "notes": "A journey through a wormhole near Saturn. The docking scene with Hans Zimmer's No Time for Caution is peak cinema."
+  },
+  {
+    "title": "Severance",
+    "category": "TV Show",
+    "status": "watching",
+    "genre": "Sci-Fi, Thriller, Mystery",
+    "release_year": 2022,
+    "rating": 9.0,
+    "watched_date": "2024-10-28",
+    "platform": "Apple TV+",
+    "poster_url": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80",
+    "notes": "Lumon Industries work-life balance taken to the absolute extreme. Cliffhanger season finale."
+  },
+  {
+    "title": "Arcane",
+    "category": "Anime",
+    "status": "completed",
+    "genre": "Animation, Action, Sci-Fi",
+    "release_year": 2021,
+    "rating": 9.8,
+    "watched_date": "2023-11-20",
+    "platform": "Netflix",
+    "poster_url": "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=600&q=80",
+    "notes": "Visually stunning depiction of Piltover and Zaun. Incredible score and emotional voice acting."
+  },
+  {
+    "title": "Dune: Part Two",
+    "category": "Movie",
+    "status": "completed",
+    "genre": "Sci-Fi, Adventure",
+    "release_year": 2024,
+    "rating": 9.2,
+    "watched_date": "2024-03-05",
+    "platform": "HBO Max",
+    "poster_url": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=600&q=80",
+    "notes": "Denis Villeneuve delivers an immaculate adaptation of Frank Herbert's desert epic."
+  },
+  {
+    "title": "The Bear",
+    "category": "TV Show",
+    "status": "plan_to_watch",
+    "genre": "Drama, Comedy",
+    "release_year": 2022,
+    "rating": 8.8,
+    "platform": "Hulu",
+    "poster_url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80",
+    "notes": "High intensity culinary drama in a Chicago Italian beef sandwich shop."
+  },
+  {
+    "title": "Planet Earth III",
+    "category": "Documentary",
+    "status": "completed",
+    "genre": "Nature, Wildlife",
+    "release_year": 2023,
+    "rating": 9.6,
+    "platform": "BBC iPlayer",
+    "poster_url": "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=600&q=80",
+    "notes": "Narrated by Sir David Attenborough. Breathtaking photography and wildlife behaviour."
+  },
+  {
+    "title": "Spirited Away",
+    "category": "Anime",
+    "status": "completed",
+    "genre": "Fantasy, Adventure, Family",
+    "release_year": 2001,
+    "rating": 9.7,
+    "platform": "Netflix",
+    "poster_url": "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80",
+    "notes": "Hayao Miyazaki's Oscar-winning masterpiece. Timeless world building."
+  },
+  {
+    "title": "Free Solo",
+    "category": "Documentary",
+    "status": "completed",
+    "genre": "Documentary, Sport",
+    "release_year": 2018,
+    "rating": 8.9,
+    "platform": "Disney+",
+    "poster_url": "https://images.unsplash.com/photo-1522163182402-834f871fd851?auto=format&fit=crop&w=600&q=80",
+    "notes": "Alex Honnold climbing El Capitan without ropes. Palms sweating the entire time."
+  },
+  {
+    "title": "Oppenheimer",
+    "category": "Movie",
+    "status": "completed",
+    "genre": "Biography, Drama, History",
+    "release_year": 2023,
+    "rating": 9.1,
+    "platform": "Peacock",
+    "poster_url": "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?auto=format&fit=crop&w=600&q=80",
+    "notes": "Trinity test sequence and the post-war hearing drama kept me riveted for 3 hours."
+  },
+  {
+    "title": "Succession",
+    "category": "TV Show",
+    "status": "completed",
+    "genre": "Drama",
+    "release_year": 2018,
+    "rating": 9.5,
+    "platform": "HBO Max",
+    "poster_url": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80",
+    "notes": "Razor sharp dialogue, Shakespearean corporate family betrayals. Outstanding finale."
+  },
+  {
+    "title": "",
+    "category": "Movie",
+    "status": "plan_to_watch",
+    "notes": "Test row: should be skipped because title is empty"
+  },
+  {
+    "title": "Invalid Score Title",
+    "category": "Movie",
+    "rating": 14.5,
+    "notes": "Test row: should be skipped because rating > 10"
+  }
+]
+

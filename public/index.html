@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Watched — Cinema & Series Journal</title>
+  <meta name="description" content="A curated personal cinema and series journal to track movies, TV shows, and anime in a sleek luxury interface.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="glow-sphere glow-1"></div>
+  <div class="glow-sphere glow-2"></div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="white" stroke="currentColor" stroke-width="0">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="logo-title">Watched</span>
+          <span class="logo-subtitle">Cinema & Series Journal</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="exportExcelBtn" class="btn btn-secondary btn-export-excel" title="Export spreadsheet in original categorized pattern">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <path d="M8 13h2"></path>
+            <path d="M8 17h2"></path>
+            <path d="M14 13h2"></path>
+            <path d="M14 17h2"></path>
+          </svg>
+          <span>Export Excel</span>
+        </button>
+
+        <button id="openAboutModalBtn" class="btn btn-secondary btn-about" title="About Watched">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span>About</span>
+        </button>
+
+        <button id="openAddModalBtn" class="btn btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Add Title</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Stats Overview Cards -->
+    <section class="stats-section">
+      <div class="stat-card">
+        <div class="stat-icon-wrapper purple">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+            <polyline points="17 2 12 7 7 2"></polyline>
+          </svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Total Titles</span>
+          <span class="stat-value" id="statTotal">0</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-wrapper blue">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Watched</span>
+          <span class="stat-value" id="statCompleted">0</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-wrapper green">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Plan to Watch</span>
+          <span class="stat-value" id="statPlanToWatch">0</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-wrapper amber">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          </svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Avg. Rating</span>
+          <span class="stat-value" id="statAvgRating">0.0</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Filters and Search Toolbar -->
+    <section class="controls-section">
+      <div class="search-and-tabs-row">
+        <div class="search-box">
+          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Search by title, genre, notes...">
+          <button id="clearSearchBtn" class="clear-btn hidden" title="Clear search">✕</button>
+        </div>
+
+        <div class="filter-tabs" id="statusFilterTabs">
+          <button class="filter-tab active" data-status="all">All</button>
+          <button class="filter-tab" data-status="completed">Watched</button>
+          <button class="filter-tab" data-status="plan_to_watch">Plan to Watch</button>
+          <button class="filter-tab" data-status="watching">Watching</button>
+          <button class="filter-tab" data-status="dropped">Dropped</button>
+        </div>
+      </div>
+
+      <div class="dropdown-filters-grid">
+        <!-- Category Filter -->
+        <div class="select-wrapper">
+          <svg class="select-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+            <line x1="7" y1="2" x2="7" y2="22"></line>
+            <line x1="17" y1="2" x2="17" y2="22"></line>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <line x1="2" y1="7" x2="7" y2="7"></line>
+            <line x1="2" y1="17" x2="7" y2="17"></line>
+            <line x1="17" y1="17" x2="22" y2="17"></line>
+            <line x1="17" y1="7" x2="22" y2="7"></line>
+          </svg>
+          <select id="typeFilter" aria-label="Filter by category">
+            <option value="all">All Categories</option>
+            <option value="Bollywood">Bollywood</option>
+            <option value="Hollywood">Hollywood</option>
+            <option value="Web series">Web series</option>
+            <option value="Anime">Anime</option>
+            <option value="South">South</option>
+            <option value="To Watch">To Watch</option>
+            <option value="Old Collection">Old Collection</option>
+            <option value="Uploaded Movies">Uploaded Movies</option>
+            <option value="Uploaded Web series">Uploaded Web series</option>
+          </select>
+        </div>
+
+        <!-- Watching Year Timeline Milestone -->
+        <div class="select-wrapper timeline-select-wrap">
+          <svg class="select-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <select id="watchYearFilter" aria-label="Filter by watching year timeline">
+            <option value="all">Watching Year (All Timeline)</option>
+          </select>
+        </div>
+
+        <!-- Release Year -->
+        <div class="select-wrapper">
+          <svg class="select-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <select id="releaseYearFilter" aria-label="Filter by release year">
+            <option value="all">Release Year (All)</option>
+          </select>
+        </div>
+
+        <!-- Sort By -->
+        <div class="select-wrapper">
+          <select id="sortBy" aria-label="Sort by">
+            <option value="created_at_desc">Newest Added</option>
+            <option value="created_at_asc">Oldest Added (Original Order)</option>
+            <option value="watched_date_desc">Timeline: Recently Watched</option>
+            <option value="watched_date_asc">Timeline: Oldest Watched</option>
+            <option value="rating_desc">Highest Rated (5★ → 1★)</option>
+            <option value="rating_asc">Lowest Rated (1★ → 5★)</option>
+            <option value="year_desc">Released: Newest First</option>
+            <option value="year_asc">Released: Oldest First</option>
+            <option value="title_asc">Title (A – Z)</option>
+            <option value="title_desc">Title (Z – A)</option>
+          </select>
+        </div>
+
+        <!-- Reset Button -->
+        <button id="resetFiltersBtn" class="btn-reset-filters hidden" title="Reset all filters">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
+          <span>Reset</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Results Count -->
+    <div class="results-header">
+      <div class="results-count">
+        Showing <span id="displayedCount">0</span> titles
+        <span id="selectedCountBadge" class="filter-badge-selected hidden"></span>
+      </div>
+      <button type="button" id="selectAllVisibleBtn" class="btn-select-all-inline hidden">Select All</button>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading your watchlist...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state hidden">
+      <div class="empty-icon">🎬</div>
+      <h3>No titles found</h3>
+      <p>Try adjusting your search terms or filters, or add your first title to start tracking!</p>
+      <button id="emptyStateAddBtn" class="btn btn-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Add Your First Title</span>
+      </button>
+    </div>
+
+    <!-- Media Grid -->
+    <section id="mediaGrid" class="media-grid hidden"></section>
+  </main>
+
+  <!-- Add / Edit Modal -->
+  <div id="itemModal" class="modal-backdrop hidden">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 id="modalTitle">Add Title to Watchlist</h3>
+        <button id="closeModalBtn" class="modal-close-btn" aria-label="Close modal">✕</button>
+      </div>
+
+      <form id="itemForm" class="modal-body">
+        <input type="hidden" id="itemId" value="">
+
+        <div class="form-row">
+          <div class="form-group full-width">
+            <label for="inputTitle">Title <span class="required">*</span></label>
+            <input type="text" id="inputTitle" required placeholder="e.g. Interstellar, Severance, Arcane">
+          </div>
+        </div>
+
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label for="inputType">Category</label>
+            <select id="inputType">
+              <option value="Bollywood">Bollywood</option>
+              <option value="Hollywood">Hollywood</option>
+              <option value="Web series">Web series</option>
+              <option value="Anime">Anime</option>
+              <option value="South">South</option>
+              <option value="To Watch">To Watch</option>
+              <option value="Old Collection">Old Collection</option>
+              <option value="Uploaded Movies">Uploaded Movies</option>
+              <option value="Uploaded Web series">Uploaded Web series</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="inputStatus">Watch Status</label>
+            <select id="inputStatus">
+              <option value="plan_to_watch">Plan to Watch</option>
+              <option value="watching">Watching</option>
+              <option value="completed">Completed</option>
+              <option value="dropped">Dropped</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label for="inputGenre">Genre</label>
+            <input type="text" id="inputGenre" placeholder="Sci-Fi, Drama, Mystery">
+          </div>
+
+          <div class="form-group">
+            <label for="inputYear">Release Year</label>
+            <input type="number" id="inputYear" min="1880" max="2100" placeholder="2024">
+          </div>
+        </div>
+
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label for="inputWatchedDate">Watching / Watched Date</label>
+            <input type="date" id="inputWatchedDate">
+          </div>
+
+          <div class="form-group">
+            <label for="inputPlatform">Platform / Service</label>
+            <input type="text" id="inputPlatform" placeholder="Netflix, HBO Max, Prime, Cinema">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group full-width">
+            <label for="inputRating">Rating (<span id="ratingDisplay">8</span>/10)</label>
+            <div class="rating-slider-wrap">
+              <input type="range" id="inputRating" min="0" max="10" step="0.5" value="8">
+              <span class="rating-stars" id="starPreview">★★★★☆</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group full-width">
+            <label for="inputPoster">Poster / Image URL</label>
+            <input type="url" id="inputPoster" placeholder="https://image.tmdb.org/... or leave empty for auto-generated cover">
+            <span class="field-hint">Optional: paste any valid image URL or leave blank.</span>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group full-width">
+            <label for="inputNotes">Notes & Personal Review</label>
+            <textarea id="inputNotes" rows="3" placeholder="Thoughts, favorite moments, quotes, or why you want to watch this..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="cancelModalBtn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="saveItemBtn" class="btn btn-primary">
+            <span id="saveBtnText">Save Title</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- About Watched Modal -->
+  <div id="aboutModal" class="modal-backdrop hidden">
+    <div class="modal-window about-modal-window">
+      <div class="modal-header">
+        <div class="about-header-title">
+          <h3>About Watched</h3>
+          <span class="about-header-tagline">Cinema & Series Journal</span>
+        </div>
+        <button id="closeAboutBtn" class="modal-close-btn" aria-label="Close modal">✕</button>
+      </div>
+      <div class="modal-body about-content">
+        <p class="about-intro">
+          <strong>Watched</strong> is your personal cinema and series journal — a refined, distraction-free space to log what you've seen, track what you're currently bingeing, and curate what to experience next.
+        </p>
+
+        <div class="about-features-grid">
+          <div class="about-feature-card">
+            <div class="feature-icon purple">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+                <polyline points="17 2 12 7 7 2"></polyline>
+              </svg>
+            </div>
+            <div class="feature-text">
+              <strong>Curate Any Media</strong>
+              <p>Track movies, TV series, anime, and documentaries in a high-density, poster-first layout.</p>
+            </div>
+          </div>
+
+          <div class="about-feature-card">
+            <div class="feature-icon blue">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+            </div>
+            <div class="feature-text">
+              <strong>Watch Dates & Timeline</strong>
+              <p>Record the exact date you watched or completed every title to build your lifetime cinema journal.</p>
+            </div>
+          </div>
+
+          <div class="about-feature-card">
+            <div class="feature-icon amber">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+            </div>
+            <div class="feature-text">
+              <strong>Ratings & Personal Notes</strong>
+              <p>Rate stories on a 10-point scale with half-star precision and write down memorable thoughts.</p>
+            </div>
+          </div>
+
+          <div class="about-feature-card">
+            <div class="feature-icon rose">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+            </div>
+            <div class="feature-text">
+              <strong>Instant Filtering & Search</strong>
+              <p>Find titles instantly by keyword, genre, status (Watching, Plan to Watch, Completed), or platform.</p>
+            </div>
+          </div>
+
+          <div class="about-feature-card">
+            <div class="feature-icon green">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+              </svg>
+            </div>
+            <div class="feature-text">
+              <strong>Live Collection Stats</strong>
+              <p>Monitor your watching progress, completed tally, and average rating in real-time summary cards.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="about-footer-info">
+          <p>Designed with a luxury dark aesthetic for film lovers, binge-watchers, and anime enthusiasts.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="closeAboutBtn2" class="btn btn-primary">Back to Watchlist</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Bulk Action Bar -->
+  <aside id="bulkActionBar" class="bulk-action-bar hidden" role="toolbar" aria-label="Bulk actions for selected titles">
+    <div class="bulk-bar-inner">
+      <div class="bulk-count-badge">
+        <span id="bulkCountNum" class="bulk-count-num">0</span>
+        <span class="bulk-count-label">selected</span>
+      </div>
+
+      <button type="button" id="bulkToggleAllBtn" class="bulk-btn bulk-btn-toggle" title="Toggle select all">
+        <span id="bulkToggleAllText">Select All</span>
+      </button>
+
+      <div class="bulk-divider"></div>
+
+      <div class="bulk-select-group">
+        <svg class="bulk-group-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="9 12 12 15 16 10"></polyline>
+        </svg>
+        <select id="bulkStatusSelect" class="bulk-select" aria-label="Bulk change watch status">
+          <option value="" disabled selected>Change Status...</option>
+          <option value="completed">Mark Completed</option>
+          <option value="watching">Mark Watching</option>
+          <option value="plan_to_watch">Mark Plan to Watch</option>
+          <option value="dropped">Mark Dropped</option>
+        </select>
+      </div>
+
+      <div class="bulk-select-group">
+        <svg class="bulk-group-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+          <line x1="7" y1="2" x2="7" y2="22"></line>
+          <line x1="17" y1="2" x2="17" y2="22"></line>
+          <line x1="2" y1="12" x2="22" y2="12"></line>
+        </svg>
+        <select id="bulkCategorySelect" class="bulk-select" aria-label="Bulk change category">
+          <option value="" disabled selected>Move Category...</option>
+          <option value="Bollywood">Bollywood</option>
+          <option value="Hollywood">Hollywood</option>
+          <option value="Web series">Web series</option>
+          <option value="Anime">Anime</option>
+          <option value="South">South</option>
+          <option value="To Watch">To Watch</option>
+          <option value="Old Collection">Old Collection</option>
+          <option value="Uploaded Movies">Uploaded Movies</option>
+          <option value="Uploaded Web series">Uploaded Web series</option>
+        </select>
+      </div>
+
+      <button type="button" id="bulkDeleteBtn" class="bulk-btn bulk-btn-delete" title="Delete selected titles">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        <span id="bulkDeleteText">Delete</span>
+      </button>
+
+      <button type="button" id="bulkCloseBtn" class="bulk-btn-close" title="Clear selection (Esc)" aria-label="Clear selection">✕</button>
+    </div>
+  </aside>
+
+  <!-- Toast Notification -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+{
+  "name": "watched",
+  "version": "1.0.0",
+  "description": "Full-stack media & watchlist tracker with HTML, CSS, JavaScript, and Neon Serverless PostgreSQL",
+  "main": "server.js",
+  "scripts": {
+    "dev": "concurrently -k -n \"API,VITE\" -c \"magenta,cyan\" \"node --watch server.js\" \"vite\"",
+    "dev:server": "node --watch server.js",
+    "dev:client": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server.js",
+    "import": "node scripts/import.js",
+    "backup": "node scripts/backup.js",
+    "export": "node scripts/export-excel.js"
+  },
+  "keywords": [
+    "neon",
+    "postgresql",
+    "serverless",
+    "watchlist",
+    "html",
+    "css",
+    "javascript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "exceljs": "^4.4.0",
+    "express": "^5.3.0",
+    "lucide-react": "^1.69.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "ws": "^8.22.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.2.1",
+    "concurrently": "^10.0.6",
+    "vite": "^8.3.6"
+  }
+}
