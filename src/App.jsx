@@ -48,11 +48,19 @@ export default function App() {
   // Progressive Batched Virtual Rendering (Limits active DOM nodes to maintain 60 FPS)
   const [displayLimit, setDisplayLimit] = useState(36);
   const sentinelRef = useRef(null);
+  // Guards against out-of-order responses (e.g. fast typing in search)
+  const itemsRequestRef = useRef(0);
 
   // Reset display chunk limit when user filters or searches
   useEffect(() => {
     setDisplayLimit(36);
   }, [search, statusFilter, categoryFilter, watchYearFilter, releaseYearFilter, sortBy]);
+
+  // Clear bulk selection whenever the result set changes so hidden items
+  // cannot be accidentally bulk-updated or deleted.
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [search, statusFilter, categoryFilter, watchYearFilter, releaseYearFilter]);
 
   // Infinite Scroll IntersectionObserver (Appends 36 items as user approaches bottom)
   useEffect(() => {
@@ -140,9 +148,11 @@ export default function App() {
     }
   }, []);
 
-  // Fetch Watchlist Items with full parameterized filters
-  const fetchItems = useCallback(async () => {
-    setLoading(true);
+  // Fetch Watchlist Items with full parameterized filters.
+  // `silent` refreshes data without replacing the grid with a spinner.
+  const fetchItems = useCallback(async ({ silent = false } = {}) => {
+    const requestId = ++itemsRequestRef.current;
+    if (!silent) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.append('status', statusFilter);
@@ -153,15 +163,19 @@ export default function App() {
       if (sortBy) params.append('sort', sortBy);
 
       const res = await fetch(`/api/items?${params.toString()}`);
+      if (requestId !== itemsRequestRef.current) return;
       if (res.ok) {
         const data = await res.json();
+        if (requestId !== itemsRequestRef.current) return;
         setItems(data.items || []);
       }
     } catch (e) {
-      console.error('Failed to load items:', e);
-      addToast('Failed to load watchlist: ' + e.message, 'error');
+      if (requestId === itemsRequestRef.current) {
+        console.error('Failed to load items:', e);
+        addToast('Failed to load watchlist: ' + e.message, 'error');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === itemsRequestRef.current) setLoading(false);
     }
   }, [statusFilter, categoryFilter, watchYearFilter, releaseYearFilter, search, sortBy, addToast]);
 
@@ -236,7 +250,7 @@ export default function App() {
         }
       }
 
-      fetchItems();
+      fetchItems({ silent: true });
       fetchStats();
       fetchFilterOptions();
     } catch (e) {
@@ -259,9 +273,12 @@ export default function App() {
         throw new Error(err.error || 'Failed to update status');
       }
 
+      const serverItem = await res.json().catch(() => null);
+      const appliedStatus = serverItem?.item?.status || (newStatus === 'watched' ? 'completed' : newStatus);
       addToast('Status updated', 'success');
-      setDetailItem((prev) => (prev && prev.id === id ? { ...prev, status: newStatus } : prev));
-      fetchItems();
+      setItems((prev) => prev.map((it) => (it.id === id ? { ...it, status: appliedStatus } : it)));
+      setDetailItem((prev) => (prev && prev.id === id ? { ...prev, status: appliedStatus } : prev));
+      fetchItems({ silent: true });
       fetchStats();
     } catch (e) {
       addToast(e.message, 'error');
@@ -279,8 +296,9 @@ export default function App() {
       if (!res.ok) throw new Error('Failed to delete item');
 
       addToast(`Removed "${title}"`, 'success');
+      setItems((prev) => prev.filter((it) => it.id !== id));
       setDetailItem((prev) => (prev && prev.id === id ? null : prev));
-      fetchItems();
+      fetchItems({ silent: true });
       fetchStats();
       fetchFilterOptions();
     } catch (e) {
@@ -340,7 +358,15 @@ export default function App() {
           setDetailItem(null);
           return;
         }
-        if (!isItemModalOpen && !isAboutOpen && selectedIds.size > 0) {
+        if (isItemModalOpen) {
+          setIsItemModalOpen(false);
+          return;
+        }
+        if (isAboutOpen) {
+          setIsAboutOpen(false);
+          return;
+        }
+        if (selectedIds.size > 0) {
           setSelectedIds(new Set());
         }
       }
@@ -362,9 +388,11 @@ export default function App() {
       });
       if (!res.ok) throw new Error('Bulk status update failed');
       const data = await res.json();
+      const appliedStatus = status === 'watched' ? 'completed' : status;
       addToast(`Updated status for ${data.count} titles`, 'success');
+      setItems((prev) => prev.map((it) => (ids.includes(it.id) ? { ...it, status: appliedStatus } : it)));
       setSelectedIds(new Set());
-      fetchItems();
+      fetchItems({ silent: true });
       fetchStats();
     } catch (e) {
       addToast(e.message, 'error');
@@ -386,7 +414,7 @@ export default function App() {
       const data = await res.json();
       addToast(`Moved ${data.count} titles to "${category}"`, 'success');
       setSelectedIds(new Set());
-      fetchItems();
+      fetchItems({ silent: true });
       fetchStats();
       fetchFilterOptions();
     } catch (e) {
@@ -412,8 +440,9 @@ export default function App() {
       if (!res.ok) throw new Error('Bulk delete failed');
       const data = await res.json();
       addToast(`Removed ${data.count} titles from watchlist`, 'success');
+      setItems((prev) => prev.filter((it) => !ids.includes(it.id)));
       setSelectedIds(new Set());
-      fetchItems();
+      fetchItems({ silent: true });
       fetchStats();
       fetchFilterOptions();
     } catch (e) {

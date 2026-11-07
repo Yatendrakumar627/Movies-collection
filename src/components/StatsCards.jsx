@@ -4,8 +4,10 @@ import { Film, CheckCircle2, Bookmark, Star, TrendingUp } from 'lucide-react';
 export default function StatsCards({ stats = {} }) {
   const total = Number(stats.total) || 0;
   const watched = Number(stats.completed) || 0;
-  const planToWatch = Number(stats.planToWatch) || (total >= watched ? total - watched : 92);
-  const avgRating = stats.avgRating ? Number(stats.avgRating).toFixed(1) : '7.7';
+  const watching = Number(stats.watching) || 0;
+  const dropped = Number(stats.dropped) || 0;
+  const planToWatch = Number(stats.planToWatch) || Math.max(0, total - watched - watching - dropped);
+  const avgRating = stats.avgRating && Number(stats.avgRating) > 0 ? Number(stats.avgRating).toFixed(1) : '0.0';
 
   return (
     <section className="stats-dashboard-grid" aria-label="Watchlist Statistics">

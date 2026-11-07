@@ -31,7 +31,8 @@ export default function BulkActionBar({
               title={isAllSelected ? 'Deselect all visible titles' : `Select all ${totalVisible} visible titles`}
             >
               {isAllSelected ? <CheckSquare size={14} /> : <Square size={14} />}
-              <span>{isAllSelected ? 'Deselect All' : `Select All (${totalVisible})`}</span>
+              <span className="bulk-toggle-full">{isAllSelected ? 'Deselect All' : `Select All (${totalVisible})`}</span>
+              <span className="bulk-toggle-short">{isAllSelected ? 'Deselect' : 'Select All'}</span>
             </button>
           </div>
 
@@ -92,7 +93,7 @@ export default function BulkActionBar({
               <option value="Hollywood">Hollywood</option>
               <option value="Web series">Web series</option>
               <option value="Anime">Anime</option>
-              <option value="South">South</option>
+              <option value="South">South Indian</option>
               <option value="Documentary">Documentary</option>
               <option value="To Watch">To Watch</option>
               <option value="Old Collection">Old Collection</option>
@@ -109,7 +110,8 @@ export default function BulkActionBar({
             title={`Delete ${selectedCount} selected title(s)`}
           >
             <Trash2 size={14} />
-            <span>Delete ({selectedCount})</span>
+            <span className="bulk-delete-full">Delete ({selectedCount})</span>
+            <span className="bulk-delete-short">Delete</span>
           </button>
 
           {/* Clear selection on desktop */}

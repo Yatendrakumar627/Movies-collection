@@ -17,6 +17,14 @@ const _db = require('./api/_db');
 let memoryItems = [];
 let nextMemoryId = 1;
 
+/**
+ * Normalize text for duplicate comparisons: trim, collapse repeated
+ * whitespace and lowercase.
+ */
+function normalizeText(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 // High-Performance In-Memory Cache
 let _cachedLibrary = null;
 let _cachedTimestamp = 0;
@@ -44,7 +52,10 @@ async function getFullLibrary(forceRefresh = false) {
       _cachedTimestamp = now;
       return _cachedLibrary;
     } catch (err) {
-      console.warn('[Neon getFullLibrary error, falling back to memory]:', err.message);
+      console.warn('[Neon getFullLibrary error, falling back to cache/memory]:', err.message);
+      // Prefer the last known good snapshot over an empty list
+      if (_cachedLibrary) return _cachedLibrary;
+      return memoryItems;
     }
   }
 
@@ -346,12 +357,8 @@ async function getItemById(id) {
   const numId = parseInt(id, 10);
   if (isNaN(numId)) return null;
   if (_db.isConfigured()) {
-    try {
-      const rows = await _db.query('SELECT *, watched_date::text AS watched_date FROM titles WHERE id = $1;', [numId]);
-      return rows.length > 0 ? formatRow(rows[0]) : null;
-    } catch (err) {
-      console.warn('[Neon getItemById error]:', err.message);
-    }
+    const rows = await _db.query('SELECT *, watched_date::text AS watched_date FROM titles WHERE id = $1;', [numId]);
+    return rows.length > 0 ? formatRow(rows[0]) : null;
   }
   return memoryItems.find(r => r.id === numId) || null;
 }
@@ -363,18 +370,20 @@ async function getItemById(id) {
  * @param {number|string|null} excludeId
  */
 async function findDuplicate(title, contentType = null, excludeId = null) {
-  const cleanTitle = (title || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const cleanTitle = normalizeText(title);
   if (!cleanTitle) return null;
-  const cleanType = (contentType || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const cleanType = normalizeText(contentType);
 
   if (_db.isConfigured()) {
     try {
-      let query = `SELECT * FROM titles WHERE LOWER(TRIM(title)) = $1`;
+      // REGEXP_REPLACE collapses internal whitespace in stored titles too,
+      // so "Some  Movie" and "Some Movie" are treated as the same title.
+      let query = `SELECT * FROM titles WHERE LOWER(REGEXP_REPLACE(TRIM(title), '\\s+', ' ', 'g')) = $1`;
       const params = [cleanTitle];
       let paramIndex = 2;
 
       if (cleanType) {
-        query += ` AND LOWER(TRIM(content_type)) = $${paramIndex++}`;
+        query += ` AND LOWER(REGEXP_REPLACE(TRIM(content_type), '\\s+', ' ', 'g')) = $${paramIndex++}`;
         params.push(cleanType);
       }
 
@@ -392,7 +401,8 @@ async function findDuplicate(title, contentType = null, excludeId = null) {
         return formatRow(rows[0]);
       }
     } catch (e) {
-      console.warn('[findDuplicate Neon error]:', e.message);
+      console.error('[findDuplicate Neon error]:', e.message);
+      throw e;
     }
   }
 
@@ -403,10 +413,10 @@ async function findDuplicate(title, contentType = null, excludeId = null) {
       const numExclude = parseInt(excludeId, 10);
       if (!isNaN(numExclude) && item.id === numExclude) return false;
     }
-    const itemTitle = (item.title || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const itemTitle = normalizeText(item.title);
     if (itemTitle !== cleanTitle) return false;
     if (cleanType) {
-      const itemType = (item.content_type || item.type || item.category || '').trim().replace(/\s+/g, ' ').toLowerCase();
+      const itemType = normalizeText(item.content_type || item.type || item.category);
       if (itemType !== cleanType) return false;
     }
     return true;
@@ -451,12 +461,15 @@ async function createItem(data) {
       invalidateCache();
       return formatRow(rows[0]);
     } catch (err) {
-      console.warn('[Neon createItem error]:', err.message);
-      if (err.message && err.message.includes('duplicate')) {
+      // Surface real database failures instead of silently writing to the
+      // (invisible) in-memory store while the database remains unchanged.
+      console.error('[Neon createItem error]:', err.message);
+      if (err.code === '23505' || /duplicate key|already exists/i.test(err.message || '')) {
         const error = new Error(`"${title}" already exists in your collection.`);
         error.code = 'DUPLICATE_TITLE';
         throw error;
       }
+      throw err;
     }
   }
 
@@ -505,13 +518,23 @@ async function updateItem(id, data) {
   const posterUrl = data.poster_url ? data.poster_url.trim() : null;
   const notes = data.notes ? data.notes.trim() : null;
 
-  // Prevent duplicate title (case-insensitive, excluding self)
-  const duplicate = await findDuplicate(title, contentType, numId);
-  if (duplicate) {
-    const error = new Error(`"${title}" already exists as a ${duplicate.content_type || 'title'} in your collection.`);
-    error.code = 'DUPLICATE_TITLE';
-    error.existingItem = duplicate;
-    throw error;
+  // Load the current row first: editing an item that already has pre-existing
+  // duplicates must be allowed as long as its title/type are not being changed.
+  const current = await getItemById(numId);
+  if (!current) return null;
+
+  const identityChanged =
+    normalizeText(current.title) !== normalizeText(title) ||
+    normalizeText(current.content_type || current.type) !== normalizeText(contentType);
+
+  if (identityChanged) {
+    const duplicate = await findDuplicate(title, contentType, numId);
+    if (duplicate) {
+      const error = new Error(`"${title}" already exists as a ${duplicate.content_type || 'title'} in your collection.`);
+      error.code = 'DUPLICATE_TITLE';
+      error.existingItem = duplicate;
+      throw error;
+    }
   }
 
   if (_db.isConfigured()) {
@@ -528,7 +551,9 @@ async function updateItem(id, data) {
       invalidateCache();
       return rows.length > 0 ? formatRow(rows[0]) : null;
     } catch (err) {
-      console.warn('[Neon updateItem error]:', err.message);
+      // Do not fall back to memory: report the real failure to the caller.
+      console.error('[Neon updateItem error]:', err.message);
+      throw err;
     }
   }
 
@@ -585,7 +610,8 @@ async function updateStatus(id, newStatus) {
       invalidateCache();
       return rows.length > 0 ? formatRow(rows[0]) : null;
     } catch (err) {
-      console.warn('[Neon updateStatus error]:', err.message);
+      console.error('[Neon updateStatus error]:', err.message);
+      throw err;
     }
   }
 
@@ -614,7 +640,8 @@ async function deleteItem(id) {
       invalidateCache();
       return rows.length > 0;
     } catch (err) {
-      console.warn('[Neon deleteItem error]:', err.message);
+      console.error('[Neon deleteItem error]:', err.message);
+      throw err;
     }
   }
 
@@ -653,7 +680,8 @@ async function bulkUpdateStatus(ids, newStatus) {
       invalidateCache();
       return rows.length;
     } catch (err) {
-      console.warn('[Neon bulkUpdateStatus error]:', err.message);
+      console.error('[Neon bulkUpdateStatus error]:', err.message);
+      throw err;
     }
   }
 
@@ -730,7 +758,8 @@ async function bulkUpdateCategory(ids, newCategory) {
       invalidateCache();
       return rows.length;
     } catch (err) {
-      console.warn('[Neon bulkUpdateCategory error]:', err.message);
+      console.error('[Neon bulkUpdateCategory error]:', err.message);
+      throw err;
     }
   }
 
@@ -767,7 +796,8 @@ async function bulkDelete(ids) {
       invalidateCache();
       return rows.length;
     } catch (err) {
-      console.warn('[Neon bulkDelete error]:', err.message);
+      console.error('[Neon bulkDelete error]:', err.message);
+      throw err;
     }
   }
 
@@ -790,7 +820,7 @@ async function getStats() {
   const ratedItems = all.filter(i => i.rating && Number(i.rating) > 0);
   const avgRating = ratedItems.length > 0
     ? (ratedItems.reduce((acc, curr) => acc + Number(curr.rating), 0) / ratedItems.length).toFixed(1)
-    : '7.7';
+    : '0.0';
 
   return {
     total,

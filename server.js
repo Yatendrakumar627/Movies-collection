@@ -13,6 +13,101 @@ const PORT = process.env.API_PORT || process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// ==============================================================
+// VALIDATION HELPERS
+// ==============================================================
+const CONTENT_TYPES = ['Movie', 'Web Series', 'Documentary'];
+const ORIGINS = ['Bollywood', 'Hollywood', 'Anime', 'South Indian', 'Korean', 'Japanese', 'Other'];
+const AVAILABILITIES = ['Uploaded', 'Not Uploaded'];
+const STATUSES = ['completed', 'watching', 'plan_to_watch', 'dropped'];
+
+function normalizeStatus(status) {
+  const s = String(status || '').trim().toLowerCase();
+  if (s === 'watched') return 'completed';
+  if (s === 'to_watch' || s === 'towatch') return 'plan_to_watch';
+  return s;
+}
+
+function normalizeDate(value) {
+  if (value == null || value === '') return { value: null };
+  const str = String(value).trim().slice(0, 10);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str);
+  if (!match) return { error: 'Watched date must be in YYYY-MM-DD format' };
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  if (dt.getUTCFullYear() !== year || dt.getUTCMonth() !== month - 1 || dt.getUTCDate() !== day) {
+    return { error: 'Watched date is not a valid calendar date' };
+  }
+  return { value: str };
+}
+
+function validateItemPayload(body = {}) {
+  const title = typeof body.title === 'string' ? body.title.trim() : '';
+  if (!title) return { error: 'Title is required' };
+  if (title.length > 255) return { error: 'Title must be 255 characters or fewer' };
+
+  const contentType = String(body.content_type || body.type || 'Movie').trim();
+  if (!CONTENT_TYPES.includes(contentType)) {
+    return { error: `Content type must be one of: ${CONTENT_TYPES.join(', ')}` };
+  }
+
+  const origin = String(body.origin || 'Bollywood').trim();
+  if (!ORIGINS.includes(origin)) {
+    return { error: `Origin must be one of: ${ORIGINS.join(', ')}` };
+  }
+
+  const availability = String(body.availability || 'Not Uploaded').trim();
+  if (!AVAILABILITIES.includes(availability)) {
+    return { error: `Availability must be one of: ${AVAILABILITIES.join(', ')}` };
+  }
+
+  const status = normalizeStatus(body.status || 'plan_to_watch');
+  if (!STATUSES.includes(status)) {
+    return { error: `Status must be one of: ${STATUSES.join(', ')}` };
+  }
+
+  let rating = 0;
+  if (body.rating !== undefined && body.rating !== null && body.rating !== '') {
+    rating = Number(body.rating);
+    if (!Number.isFinite(rating) || rating < 0 || rating > 10) {
+      return { error: 'Rating must be a number between 0 and 10' };
+    }
+  }
+
+  let releaseYear = null;
+  if (body.release_year !== undefined && body.release_year !== null && body.release_year !== '') {
+    releaseYear = Number(body.release_year);
+    if (!Number.isInteger(releaseYear) || releaseYear < 1888 || releaseYear > 2100) {
+      return { error: 'Release year must be a whole number between 1888 and 2100' };
+    }
+  }
+
+  const watchedDate = normalizeDate(body.watched_date);
+  if (watchedDate.error) return { error: watchedDate.error };
+
+  if (body.genre && String(body.genre).length > 100) return { error: 'Genre must be 100 characters or fewer' };
+  if (body.platform && String(body.platform).length > 100) return { error: 'Platform must be 100 characters or fewer' };
+  if (body.poster_url && String(body.poster_url).length > 2048) return { error: 'Poster URL is too long' };
+  if (body.notes && String(body.notes).length > 5000) return { error: 'Notes must be 5000 characters or fewer' };
+
+  return {
+    data: {
+      ...body,
+      title,
+      content_type: contentType,
+      type: contentType,
+      origin,
+      availability,
+      status,
+      rating,
+      release_year: releaseYear,
+      watched_date: watchedDate.value
+    }
+  };
+}
+
 // Check if Vite production build exists, otherwise serve public
 const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {
@@ -100,26 +195,15 @@ app.get('/api/items/:id', async (req, res) => {
 // Add new title to watchlist
 app.post('/api/items', async (req, res) => {
   try {
-    const { title, content_type, origin, availability, type, category, status, genre, release_year, rating, watched_date, platform, poster_url, notes } = req.body;
-
-    if (!title || !title.trim()) {
-      return res.status(400).json({ error: 'Title is required' });
+    const validation = validateItemPayload(req.body);
+    if (validation.error) {
+      return res.status(400).json({ error: validation.error });
     }
+    const data = validation.data;
 
     const newItem = await db.createItem({
-      title: title.trim(),
-      content_type: content_type || type || category,
-      origin,
-      availability,
-      category: category || content_type || type,
-      status,
-      genre,
-      release_year,
-      rating,
-      watched_date,
-      platform,
-      poster_url,
-      notes
+      ...data,
+      category: data.category || data.content_type
     });
 
     res.status(201).json({
@@ -139,26 +223,15 @@ app.post('/api/items', async (req, res) => {
 // Update title details
 app.put('/api/items/:id', async (req, res) => {
   try {
-    const { title, content_type, origin, availability, type, category, status, genre, release_year, rating, watched_date, platform, poster_url, notes } = req.body;
-
-    if (!title || !title.trim()) {
-      return res.status(400).json({ error: 'Title is required' });
+    const validation = validateItemPayload(req.body);
+    if (validation.error) {
+      return res.status(400).json({ error: validation.error });
     }
+    const data = validation.data;
 
     const updated = await db.updateItem(req.params.id, {
-      title: title.trim(),
-      content_type: content_type || type || category,
-      origin,
-      availability,
-      category: category || content_type || type,
-      status,
-      genre,
-      release_year,
-      rating,
-      watched_date,
-      platform,
-      poster_url,
-      notes
+      ...data,
+      category: data.category || data.content_type
     });
 
     if (!updated) {
@@ -186,7 +259,10 @@ app.patch('/api/items/:id/status', async (req, res) => {
     if (!status) {
       return res.status(400).json({ error: 'Status is required' });
     }
-    const cleanStatus = String(status).trim().toLowerCase() === 'watched' ? 'completed' : String(status).trim();
+    const cleanStatus = normalizeStatus(status);
+    if (!STATUSES.includes(cleanStatus)) {
+      return res.status(400).json({ error: `Status must be one of: ${STATUSES.join(', ')}` });
+    }
 
     const updated = await db.updateStatus(req.params.id, cleanStatus);
     if (!updated) {
@@ -232,7 +308,10 @@ app.post('/api/items/bulk/status', async (req, res) => {
     if (!status || !status.trim()) {
       return res.status(400).json({ error: 'status is required' });
     }
-    const cleanStatus = status.trim().toLowerCase() === 'watched' ? 'completed' : status.trim();
+    const cleanStatus = normalizeStatus(status);
+    if (!STATUSES.includes(cleanStatus)) {
+      return res.status(400).json({ error: `Status must be one of: ${STATUSES.join(', ')}` });
+    }
 
     const updated = await db.bulkUpdateStatus(ids, cleanStatus);
     const count = typeof updated === 'number' ? updated : (Array.isArray(updated) ? updated.length : 0);
@@ -320,6 +399,21 @@ app.get('/api/export/excel', async (req, res) => {
     console.error('Error in GET /api/export/excel:', err);
     res.status(500).json({ error: 'Failed to export Excel spreadsheet' });
   }
+});
+
+// Unknown API routes must return JSON instead of the SPA HTML shell
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'API endpoint not found' });
+});
+
+// Centralized error handler (malformed JSON bodies, unexpected failures)
+app.use((err, req, res, next) => {
+  if (err && (err.type === 'entity.parse.failed' || err instanceof SyntaxError)) {
+    return res.status(400).json({ error: 'Invalid JSON body' });
+  }
+  console.error('Unhandled server error:', err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 // Fallback to index.html for client-side routing

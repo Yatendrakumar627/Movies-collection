@@ -11,17 +11,17 @@ function BrandNeonEmblem() {
     >
       <defs>
         <radialGradient id="badge-bg-glow" cx="50%" cy="50%" r="65%">
-          <stop offset="0%" stopColor="#2a0845" stopOpacity="0.9" />
-          <stop offset="60%" stopColor="#120224" stopOpacity="0.98" />
-          <stop offset="100%" stopColor="#07010f" stopOpacity="1" />
+          <stop offset="0%" stopColor="#241430" stopOpacity="0.9" />
+          <stop offset="60%" stopColor="#120B1A" stopOpacity="0.98" />
+          <stop offset="100%" stopColor="#07050B" stopOpacity="1" />
         </radialGradient>
         <radialGradient id="badge-ambient-cyan" cx="20%" cy="80%" r="50%">
-          <stop offset="0%" stopColor="#00f2fe" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#00f2fe" stopOpacity="0" />
+          <stop offset="0%" stopColor="#2FA98C" stopOpacity="0.30" />
+          <stop offset="100%" stopColor="#2FA98C" stopOpacity="0" />
         </radialGradient>
         <radialGradient id="badge-ambient-magenta" cx="70%" cy="30%" r="55%">
-          <stop offset="0%" stopColor="#ff007f" stopOpacity="0.4" />
-          <stop offset="100%" stopColor="#ff007f" stopOpacity="0" />
+          <stop offset="0%" stopColor="#E8C87A" stopOpacity="0.38" />
+          <stop offset="100%" stopColor="#E8C87A" stopOpacity="0" />
         </radialGradient>
         <filter id="badge-neon-glow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="5" result="blur1" />
@@ -33,13 +33,13 @@ function BrandNeonEmblem() {
           </feMerge>
         </filter>
       </defs>
-      <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#badge-bg-glow)" stroke="#ff007f" strokeOpacity="0.25" strokeWidth="1.5" />
+      <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#badge-bg-glow)" stroke="#E8C87A" strokeOpacity="0.32" strokeWidth="1.5" />
       <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#badge-ambient-cyan)" />
       <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#badge-ambient-magenta)" />
       <g filter="url(#badge-neon-glow)">
-        <polygon points="46,38 88,64 46,90" fill="none" stroke="#e0007b" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
-        <polygon points="46,38 88,64 46,90" fill="none" stroke="#d946ef" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
-        <polygon points="46,38 88,64 46,90" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+        <polygon points="46,38 88,64 46,90" fill="none" stroke="#B58A3C" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
+        <polygon points="46,38 88,64 46,90" fill="none" stroke="#E8C87A" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+        <polygon points="46,38 88,64 46,90" fill="none" stroke="#FFF9EC" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
       </g>
     </svg>
   );
@@ -91,32 +91,32 @@ export default function Header({
           <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="clapper-svg">
             <defs>
               <linearGradient id="popcornGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.8" />
-                <stop offset="100%" stopColor="#EF4444" stopOpacity="0.3" />
+                <stop offset="0%" stopColor="#E8C87A" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="#B58A3C" stopOpacity="0.3" />
               </linearGradient>
               <linearGradient id="neonPlay" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#A855F7" />
-                <stop offset="100%" stopColor="#EC4899" />
+                <stop offset="0%" stopColor="#F4E3B2" />
+                <stop offset="100%" stopColor="#B58A3C" />
               </linearGradient>
             </defs>
             {/* Clapperboard representation */}
-            <path d="M40 70 L210 30 L225 65 L55 105 Z" fill="#1E1E2F" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-            <path d="M40 100 L210 60 L210 170 L40 170 Z" fill="#141423" stroke="rgba(255,255,255,0.15)" strokeWidth="2" />
+            <path d="M40 70 L210 30 L225 65 L55 105 Z" fill="#22162E" stroke="rgba(232,200,122,0.28)" strokeWidth="2" />
+            <path d="M40 100 L210 60 L210 170 L40 170 Z" fill="#120C1A" stroke="rgba(232,200,122,0.22)" strokeWidth="2" />
             {/* Clapper stripes */}
-            <path d="M60 65 L75 62 L65 83 L50 86 Z" fill="rgba(255,255,255,0.7)" />
-            <path d="M100 56 L115 53 L105 74 L90 77 Z" fill="rgba(255,255,255,0.7)" />
-            <path d="M140 47 L155 44 L145 65 L130 68 Z" fill="rgba(255,255,255,0.7)" />
-            <path d="M180 38 L195 35 L185 56 L170 59 Z" fill="rgba(255,255,255,0.7)" />
+            <path d="M60 65 L75 62 L65 83 L50 86 Z" fill="rgba(247,240,227,0.72)" />
+            <path d="M100 56 L115 53 L105 74 L90 77 Z" fill="rgba(247,240,227,0.72)" />
+            <path d="M140 47 L155 44 L145 65 L130 68 Z" fill="rgba(247,240,227,0.72)" />
+            <path d="M180 38 L195 35 L185 56 L170 59 Z" fill="rgba(247,240,227,0.72)" />
             {/* Glowing Neon Play Emblem */}
-            <polygon points="120,105 150,122 120,139" fill="url(#neonPlay)" filter="drop-shadow(0 0 12px rgba(168,85,247,0.9))" />
+            <polygon points="120,105 150,122 120,139" fill="url(#neonPlay)" filter="drop-shadow(0 0 12px rgba(232,200,122,0.85))" />
             {/* Cinema Popcorn box */}
-            <path d="M210 85 L275 85 L265 170 L220 170 Z" fill="#DC2626" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-            <path d="M222 85 L229 170 M242 85 L242 170 M256 85 L252 170" stroke="#FFFFFF" strokeWidth="6" />
-            <circle cx="225" cy="75" r="14" fill="#FDE047" opacity="0.9" />
-            <circle cx="245" cy="68" r="16" fill="#FACC15" opacity="0.95" />
-            <circle cx="265" cy="74" r="15" fill="#FDE047" opacity="0.9" />
-            <circle cx="235" cy="60" r="13" fill="#FEF08A" />
-            <circle cx="255" cy="58" r="14" fill="#FDE047" />
+            <path d="M210 85 L275 85 L265 170 L220 170 Z" fill="#5C1F32" stroke="rgba(232,200,122,0.35)" strokeWidth="2" />
+            <path d="M222 85 L229 170 M242 85 L242 170 M256 85 L252 170" stroke="#D8C08A" strokeWidth="6" />
+            <circle cx="225" cy="75" r="14" fill="#E8C87A" opacity="0.9" />
+            <circle cx="245" cy="68" r="16" fill="#F4E3B2" opacity="0.95" />
+            <circle cx="265" cy="74" r="15" fill="#D8C08A" opacity="0.9" />
+            <circle cx="235" cy="60" r="13" fill="#FFF6D8" />
+            <circle cx="255" cy="58" r="14" fill="#E8C87A" />
           </svg>
         </div>
       </div>

@@ -66,6 +66,17 @@ export default function ItemModal({
 
     const currentId = item?.id;
 
+    // Editing an existing item without changing its title or content type must
+    // be allowed even if legacy duplicate rows already share that title.
+    if (item) {
+      const originalTitle = (item.title || '').trim().replace(/\s+/g, ' ').toLowerCase();
+      const originalType = (item.content_type || item.type || 'Movie').trim().toLowerCase();
+      if (cleanTitle === originalTitle && currentType === originalType) {
+        setDuplicateMatch(null);
+        return;
+      }
+    }
+
     // 1. Instant Synchronous Check against loaded items (excluding self by string-safe ID comparison)
     const localMatch = existingItems.find((ex) => {
       if (currentId != null && String(ex.id) === String(currentId)) return false;
@@ -207,6 +218,8 @@ export default function ItemModal({
         watched_date: formData.watched_date && formData.watched_date.trim() ? formData.watched_date.trim() : null
       };
       await onSave(payload);
+    } catch (err) {
+      // The parent shows an error toast; keep the modal open so the user can fix the input.
     } finally {
       setIsSubmitting(false);
     }

@@ -15,10 +15,18 @@ import {
  */
 function formatDisplayDate(dateStr) {
   if (!dateStr) return '';
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   try {
+    // Parse date-only values as UTC so users west of UTC don't see the
+    // previous day (e.g. "2024-05-01" must always display as 1 May 2024).
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateStr));
+    if (match) {
+      const d = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+      if (isNaN(d.getTime())) return dateStr;
+      return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+    }
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   } catch (e) {
     return dateStr;

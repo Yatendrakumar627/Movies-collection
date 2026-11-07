@@ -39,6 +39,9 @@ function toCsv(rows) {
   const headers = [
     'id',
     'title',
+    'content_type',
+    'origin',
+    'availability',
     'category',
     'status',
     'genre',
@@ -85,7 +88,7 @@ async function runBackup() {
 
     console.log('📥 Exporting records from "titles" table...');
     const rows = await sql`
-      SELECT id, title, category, status, genre, release_year, rating, watched_date, platform, poster_url, notes, created_at, updated_at
+      SELECT id, title, content_type, origin, availability, category, status, genre, release_year, rating, watched_date, platform, poster_url, notes, created_at, updated_at
       FROM titles
       ORDER BY id ASC;
     `;
