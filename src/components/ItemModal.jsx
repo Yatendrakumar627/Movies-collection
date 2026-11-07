@@ -66,9 +66,9 @@ export default function ItemModal({
 
     const currentId = item?.id;
 
-    // 1. Instant Synchronous Check against loaded items
+    // 1. Instant Synchronous Check against loaded items (excluding self by string-safe ID comparison)
     const localMatch = existingItems.find((ex) => {
-      if (currentId != null && ex.id === currentId) return false;
+      if (currentId != null && String(ex.id) === String(currentId)) return false;
       const exTitle = (ex.title || '').trim().replace(/\s+/g, ' ').toLowerCase();
       const exType = (ex.content_type || ex.type || 'Movie').trim().toLowerCase();
       return exTitle === cleanTitle && exType === currentType;
@@ -93,7 +93,11 @@ export default function ItemModal({
         if (res.ok && !isCancelled) {
           const data = await res.json();
           if (data.isDuplicate && data.match) {
-            setDuplicateMatch(data.match);
+            if (currentId != null && String(data.match.id) === String(currentId)) {
+              setDuplicateMatch(null);
+            } else {
+              setDuplicateMatch(data.match);
+            }
           } else {
             setDuplicateMatch(null);
           }
@@ -155,7 +159,7 @@ export default function ItemModal({
         genre: '',
         release_year: new Date().getFullYear(),
         rating: 8,
-        watched_date: defaultCategory === 'To Watch' ? '' : new Date().toISOString().slice(0, 10),
+        watched_date: '',
         platform: '',
         poster_url: '',
         notes: ''
@@ -187,17 +191,20 @@ export default function ItemModal({
         computedCategory = formData.content_type || 'Movie';
       }
 
+      let cleanPoster = (formData.poster_url || '').trim();
+      if (cleanPoster && !/^https?:\/\//i.test(cleanPoster) && !cleanPoster.startsWith('/')) {
+        cleanPoster = 'https://' + cleanPoster;
+      }
+
       const payload = {
         ...formData,
         title: cleanTitle,
+        poster_url: cleanPoster,
         category: computedCategory,
         type: formData.content_type,
         release_year: formData.release_year ? parseInt(formData.release_year, 10) : null,
         rating: isNaN(parseFloat(formData.rating)) ? 0.0 : parseFloat(formData.rating),
-        watched_date:
-          formData.status === 'completed' && !formData.watched_date
-            ? new Date().toISOString().slice(0, 10)
-            : formData.watched_date || null
+        watched_date: formData.watched_date && formData.watched_date.trim() ? formData.watched_date.trim() : null
       };
       await onSave(payload);
     } finally {
@@ -232,7 +239,7 @@ export default function ItemModal({
           <div className="modal-header-text">
             <h3>{item ? 'Edit Watchlist Item' : 'Add Title to Watchlist'}</h3>
             <span className="modal-header-sub">
-              {item ? 'Update cinema metadata & rating across 4 dimensions' : 'Add to your personal cinema universe across 4 dimensions'}
+              {item ? 'Update cinema metadata, category & rating' : 'Add a title to your personal cinema watchlist'}
             </span>
           </div>
           <button className="modal-close-btn" onClick={onClose} aria-label="Close modal">
@@ -269,13 +276,13 @@ export default function ItemModal({
               </div>
             </div>
 
-            {/* 4-DIMENSION ARCHITECTURE CARD */}
+            {/* Content Categories & Metadata Panel */}
             <div className="four-dimensions-panel">
-              {/* Dimension 1: Content Type */}
+              {/* Content Type */}
               <div className="dimension-row">
                 <div className="dimension-header">
-                  <span className="dimension-title">Dimension 1 — Content Type</span>
-                  <span className="dimension-question">What kind of content is it?</span>
+                  <span className="dimension-title">Content Type</span>
+                  <span className="dimension-question">What kind of content is this?</span>
                 </div>
                 <div className="dimension-pill-group">
                   {CONTENT_TYPES.map((ct) => (
@@ -291,10 +298,10 @@ export default function ItemModal({
                 </div>
               </div>
 
-              {/* Dimension 2: Industry / Origin */}
+              {/* Industry / Origin */}
               <div className="dimension-row">
                 <div className="dimension-header">
-                  <span className="dimension-title">Dimension 2 — Industry / Origin</span>
+                  <span className="dimension-title">Industry / Origin</span>
                   <span className="dimension-question">Where does the content originate?</span>
                 </div>
                 <div className="dimension-pill-group">
@@ -311,10 +318,10 @@ export default function ItemModal({
                 </div>
               </div>
 
-              {/* Dimension 3: Availability */}
+              {/* Library Availability */}
               <div className="dimension-row">
                 <div className="dimension-header">
-                  <span className="dimension-title">Dimension 3 — Availability</span>
+                  <span className="dimension-title">Library Availability</span>
                   <span className="dimension-question">Is the content available in your uploaded library?</span>
                 </div>
                 <div className="dimension-pill-group">
@@ -331,10 +338,10 @@ export default function ItemModal({
                 </div>
               </div>
 
-              {/* Dimension 4: Watch Status */}
+              {/* Watch Status */}
               <div className="dimension-row">
                 <div className="dimension-header">
-                  <span className="dimension-title">Dimension 4 — Watch Status</span>
+                  <span className="dimension-title">Watch Status</span>
                   <span className="dimension-question">What is your personal viewing progress?</span>
                 </div>
                 <div className="dimension-pill-group">
@@ -344,11 +351,9 @@ export default function ItemModal({
                       type="button"
                       className={`dimension-pill-btn ${formData.status === st.value ? (st.value === 'completed' ? 'active-pill green' : st.value === 'watching' ? 'active-pill blue' : st.value === 'plan_to_watch' ? 'active-pill orange' : 'active-pill red') : ''}`}
                       onClick={() => {
-                        const newStatus = st.value;
                         setFormData((prev) => ({
                           ...prev,
-                          status: newStatus,
-                          watched_date: newStatus === 'completed' && !prev.watched_date ? new Date().toISOString().slice(0, 10) : prev.watched_date
+                          status: st.value
                         }));
                       }}
                     >
@@ -375,7 +380,7 @@ export default function ItemModal({
               </div>
 
               <div className="form-group">
-                <label htmlFor="inputWatchedDate">Watched Date</label>
+                <label htmlFor="inputWatchedDate">Watched Date (Optional)</label>
                 <FacebookDatePicker
                   id="inputWatchedDate"
                   value={formData.watched_date}
@@ -447,7 +452,8 @@ export default function ItemModal({
                 <label htmlFor="inputPoster">Poster Image URL (Optional)</label>
                 <input
                   id="inputPoster"
-                  type="url"
+                  type="text"
+                  inputMode="url"
                   value={formData.poster_url}
                   onChange={(e) => setFormData({ ...formData, poster_url: e.target.value })}
                   placeholder="https://images.unsplash.com/photo-..."

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Star,
   Calendar,
@@ -48,6 +48,11 @@ export default function DetailModal({
   onStatusChange
 }) {
   const [imgError, setImgError] = useState(false);
+
+  // Reset img error state when poster URL or item ID changes
+  useEffect(() => {
+    setImgError(false);
+  }, [item?.poster_url, item?.id]);
 
   if (!isOpen || !item) return null;
 
@@ -106,6 +111,7 @@ export default function DetailModal({
               alt=""
               className="detail-poster-blur-bg"
               aria-hidden="true"
+              referrerPolicy="no-referrer"
             />
           ) : (
             <div className="detail-procedural-backdrop" aria-hidden="true"></div>
@@ -142,6 +148,7 @@ export default function DetailModal({
                 src={item.poster_url}
                 alt={item.title}
                 className="detail-floating-poster-img"
+                referrerPolicy="no-referrer"
                 onError={() => setImgError(true)}
               />
             ) : (
@@ -238,13 +245,13 @@ export default function DetailModal({
               </div>
             </div>
 
-            {/* 4. Category & 4 Dimensions */}
+            {/* 4. Format & Origin */}
             <div className="detail-metric-card">
               <div className="metric-icon-wrap pink">
                 <Film size={15} />
               </div>
               <div className="metric-content">
-                <span className="metric-label">Dimensions</span>
+                <span className="metric-label">Format & Origin</span>
                 <span className="metric-val-text">
                   {item.content_type || 'Movie'} · {item.origin || 'Bollywood'}
                 </span>

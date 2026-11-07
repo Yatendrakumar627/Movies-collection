@@ -68,6 +68,11 @@ function MediaCard({
   const [openUpward, setOpenUpward] = useState(false);
   const menuAnchorRef = useRef(null);
 
+  // Sync and reset error state when poster URL or item ID changes
+  useEffect(() => {
+    setImgError(false);
+  }, [item?.poster_url, item?.id]);
+
   const handleToggleMenu = (e) => {
     e.stopPropagation();
     if (!showMenu && menuAnchorRef.current) {
@@ -173,6 +178,7 @@ function MediaCard({
               alt={item.title}
               className="list-thumb-img"
               loading="lazy"
+              referrerPolicy="no-referrer"
               onError={() => setImgError(true)}
             />
           ) : (
@@ -339,6 +345,7 @@ function MediaCard({
             className="poster-img"
             loading="lazy"
             decoding="async"
+            referrerPolicy="no-referrer"
             onError={() => setImgError(true)}
           />
         ) : (

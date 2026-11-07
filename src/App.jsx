@@ -212,6 +212,9 @@ export default function App() {
         throw new Error(err.error || 'Failed to save item');
       }
 
+      const resData = await res.json();
+      const savedItem = resData.item || { ...(isEditing ? editingItem : {}), ...payload };
+
       addToast(
         isEditing ? `Updated "${payload.title}"` : `Added "${payload.title}" to watchlist`,
         'success'
@@ -219,10 +222,18 @@ export default function App() {
       setIsItemModalOpen(false);
       setEditingItem(null);
 
-      // If newly added, clear search and ensure the title is immediately in view
+      // Optimistic state updates
       if (!isEditing) {
         setSearch('');
         setDisplayLimit(36);
+        setItems((prev) => [savedItem, ...prev]);
+      } else {
+        setItems((prev) => prev.map((it) => (it.id === savedItem.id ? savedItem : it)));
+        setDetailItem((prev) => (prev && prev.id === savedItem.id ? savedItem : prev));
+        // If search was active and title changed, clear search so user doesn't lose sight of the updated card
+        if (search.trim() && payload.title && !payload.title.toLowerCase().includes(search.trim().toLowerCase())) {
+          setSearch('');
+        }
       }
 
       fetchItems();

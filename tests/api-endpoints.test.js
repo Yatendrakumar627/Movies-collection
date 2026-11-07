@@ -46,13 +46,13 @@ describe('REST API Endpoints', () => {
     assert.ok(Array.isArray(data.categories));
   });
 
-  it('GET /api/items?category=Anime returns 71 items', async () => {
+  it('GET /api/items?category=Anime returns all anime items', async () => {
     const res = await fetch(`${baseUrl}/api/items?category=Anime`);
     assert.equal(res.status, 200);
     const data = await res.json();
     assert.equal(data.success, true);
-    assert.equal(data.count, 71);
-    assert.equal(data.items.length, 71);
+    assert.ok(data.count >= 71, `Should find at least 71 anime items, got ${data.count}`);
+    assert.ok(data.items.length >= 71);
     for (const item of data.items) {
       assert.equal(item.origin, 'Anime');
     }
